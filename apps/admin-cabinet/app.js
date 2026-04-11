@@ -1,49 +1,47 @@
+import { resolveApiBaseUrl } from "./src/config.js";
+import {
+  generateTemporaryCompanyPassword,
+  normalizeCompanyRecord,
+  removeCompanyState,
+  renderAdminPanelView,
+  renderCompanyClientsView,
+  upsertCompanyState,
+} from "./src/companies.js";
+import {
+  canAccessView as canRoleAccessView,
+  canAddProperties as canRoleAddProperties,
+  canCreateRequests as canRoleCreateRequests,
+  canManageProperty as canRoleManageProperty,
+  getDefaultView,
+  getRoleLabel,
+} from "./src/accessModel.js";
+
 const STORAGE_KEY = "tulip-admin-cabinet-data";
 const STORAGE_VERSION = 1;
 const AUTH_STORAGE_KEY = "tulip-admin-cabinet-auth";
 const NAVIGATION_STORAGE_KEY = "tulip-admin-cabinet-navigation";
 
-function resolveApiBaseUrl() {
-  const { protocol, hostname } = window.location;
-
-  if (hostname === "127.0.0.1" || hostname === "localhost") {
-    return "http://127.0.0.1:3000";
-  }
-
-  const hostParts = hostname.split(".");
-  if (hostParts.length >= 2) {
-    return `${protocol}//api.${hostParts.slice(-2).join(".")}`;
-  }
-
-  return `${protocol}//${hostname}:3000`;
-}
-
 const API_BASE_URL = resolveApiBaseUrl();
 
 const AUTH_USERS = [
-  { id: "OWNER-01", name: "Aidima", role: "project_owner", label: "Владелец проекта" },
-  { id: "ST-01", name: "Kemal Yilmaz", role: "manager", label: "Менеджер" },
-  { id: "ST-02", name: "Irina Volkova", role: "support", label: "Поддержка" },
-  { id: "ST-03", name: "Murat Demir", role: "accountant", label: "Бухгалтер" },
-  { id: "CLIENT-088", clientId: "CL-088", name: "Elena Petrova", role: "client", label: "Клиент" },
-  { id: "CLIENT-031", clientId: "CL-031", name: "Ahmet Kaya", role: "client", label: "Клиент" },
-  { id: "CLIENT-102", clientId: "CL-102", name: "Svetlana Mironova", role: "client", label: "Клиент" },
+  { id: "OWNER-01", name: "Aidima", role: "project_owner", label: getRoleLabel("project_owner") },
+  { id: "ST-00", name: "Tulip Antalya Admin", role: "company_admin", label: getRoleLabel("company_admin") },
+  { id: "ST-01", name: "Kemal Yilmaz", role: "manager", label: getRoleLabel("manager") },
+  { id: "CLIENT-088", clientId: "CL-088", name: "Elena Petrova", role: "client", label: getRoleLabel("client") },
+  { id: "CLIENT-031", clientId: "CL-031", name: "Ahmet Kaya", role: "client", label: getRoleLabel("client") },
+  { id: "CLIENT-102", clientId: "CL-102", name: "Svetlana Mironova", role: "client", label: getRoleLabel("client") },
 ];
 
-const ROLE_VIEW_ACCESS = {
-  project_owner: ["dashboard", "admin-panel", "company-clients", "requests", "clients", "properties", "payments", "documents"],
-  manager: ["dashboard", "requests", "clients", "properties", "payments", "documents"],
-  support: ["dashboard", "requests", "clients", "properties"],
-  accountant: ["dashboard", "clients", "properties", "payments", "documents"],
-  client: ["properties"],
-};
+function getUserLabel(user) {
+  if (!user) return "Гость";
+  return user.label || getRoleLabel(user.role);
+}
 
 const DEFAULT_DATA_STORE = {
   companies: [],
   staff: [
+    { id: "ST-00", name: "Tulip Antalya Admin", role: "company_admin", openRequests: 2 },
     { id: "ST-01", name: "Kemal Yilmaz", role: "manager", openRequests: 7 },
-    { id: "ST-02", name: "Irina Volkova", role: "support", openRequests: 5 },
-    { id: "ST-03", name: "Murat Demir", role: "accountant", openRequests: 3 },
   ],
   clients: [
     {
@@ -169,7 +167,7 @@ const DEFAULT_DATA_STORE = {
       city: "Bodrum",
       district: "Yalikavak",
       type: "villa complex",
-      manager: "Irina Volkova",
+      manager: "Kemal Yilmaz",
       status: "active",
       unitCount: 3,
       units: [
@@ -308,7 +306,7 @@ const DEFAULT_DATA_STORE = {
       category: "document",
       priority: "medium",
       status: "waiting",
-      assignee: "Irina Volkova",
+      assignee: "Kemal Yilmaz",
       source: "web",
       createdAt: "2026-04-10 08:20",
       title: "Продление договора аренды",
@@ -321,7 +319,7 @@ const DEFAULT_DATA_STORE = {
       category: "payment",
       priority: "low",
       status: "done",
-      assignee: "Murat Demir",
+      assignee: "Tulip Antalya Admin",
       source: "admin",
       createdAt: "2026-04-09 17:40",
       title: "Подтверждение входящего платежа",
@@ -544,6 +542,8 @@ function normalizePropertyRecord(property = {}, index = 0) {
   return {
     id: propertyId,
     code: property.code || `OBJ-${String(index + 1).padStart(3, "0")}`,
+    companyId: property.companyId || "",
+    companyName: property.companyName || "",
     title: property.title || "Новый объект",
     city: property.city || "",
     district: property.district || "",
@@ -574,22 +574,6 @@ function normalizeClientRecord(client = {}) {
     telegramId: client.telegramId || "",
     properties: Array.isArray(client.properties) ? client.properties : [],
     status: client.status || "active",
-  };
-}
-
-function normalizeCompanyRecord(company = {}, index = 0) {
-  return {
-    id: company.id || `MC-${String(index + 1).padStart(3, "0")}`,
-    companyId: company.companyId || company.id || `company-${index + 1}`,
-    title: company.title || `Компания ${index + 1}`,
-    telegramId: company.telegramId || "",
-    telegramUsername: company.telegramUsername || "",
-    telegramLoginMode: company.telegramLoginMode || "telegram_password",
-    tempPassword: company.tempPassword || "",
-    mustChangePassword:
-      company.mustChangePassword === undefined ? true : Boolean(company.mustChangePassword),
-    status: company.status || "invited",
-    createdAt: company.createdAt || new Date().toISOString(),
   };
 }
 
@@ -677,10 +661,19 @@ function normalizeDocumentRecord(documentItem = {}) {
 
 function normalizeStaffRecord(staff = {}) {
   return {
-    id: staff.id || "",
+    id: staff.id || staff.managerId || "",
+    managerId: staff.managerId || staff.id || "",
+    login: staff.login || staff.managerId || staff.id || "",
     name: staff.name || "",
     role: staff.role || "manager",
+    phone: staff.phone || "",
+    email: staff.email || "",
+    status: staff.status || "active",
     openRequests: Number(staff.openRequests) || 0,
+    mustChangePassword: Boolean(staff.mustChangePassword),
+    tempPassword: staff.tempPassword || "",
+    companyId: staff.companyId || "",
+    companyName: staff.companyName || "",
   };
 }
 
@@ -742,27 +735,9 @@ function persistDataStore() {
 
 let dataStore = loadDataStore();
 
-function generateTemporaryCompanyPassword() {
-  return `Tulip-${Math.random().toString(36).slice(2, 6).toUpperCase()}${Math.random()
-    .toString(10)
-    .slice(2, 6)}`;
-}
-
 function upsertCompany(company, index = 0) {
-  const normalized = normalizeCompanyRecord(company, index);
-  const existingIndex = dataStore.companies.findIndex(
-    (item) => item.companyId === normalized.companyId
-  );
-
-  if (existingIndex >= 0) {
-    dataStore.companies[existingIndex] = {
-      ...dataStore.companies[existingIndex],
-      ...normalized,
-    };
-  } else {
-    dataStore.companies.unshift(normalized);
-  }
-
+  dataStore.companies = upsertCompanyState(dataStore.companies, company, index);
+  const normalized = dataStore.companies.find((item) => item.companyId === normalizeCompanyRecord(company, index).companyId) || normalizeCompanyRecord(company, index);
   persistDataStore();
   return normalized;
 }
@@ -827,14 +802,15 @@ function loadAuthState() {
     const storedValue = window.localStorage.getItem(AUTH_STORAGE_KEY);
     if (!storedValue) return null;
     const parsed = JSON.parse(storedValue);
-    return getAuthUsers().find((user) => user.id === parsed?.userId) || null;
+    if (!parsed?.token || !parsed?.user?.id) return null;
+    return parsed;
   } catch (error) {
     return null;
   }
 }
 
-function persistAuthState(user) {
-  if (!user) {
+function persistAuthState(session) {
+  if (!session?.token || !session?.user?.id) {
     window.localStorage.removeItem(AUTH_STORAGE_KEY);
     return;
   }
@@ -842,8 +818,11 @@ function persistAuthState(user) {
   window.localStorage.setItem(
     AUTH_STORAGE_KEY,
     JSON.stringify({
-      userId: user.id,
-      role: user.role,
+      token: session.token,
+      user: session.user,
+      impersonator: session.impersonator || null,
+      issuedAt: session.issuedAt || null,
+      expiresAt: session.expiresAt || null,
       savedAt: new Date().toISOString(),
     })
   );
@@ -862,12 +841,25 @@ const views = {
       { label: "Живые данные из API", status: "todo" },
     ],
   },
-  "admin-panel": {
-    title: "Админ панель",
+  managers: {
+    title: "Менеджеры",
     description:
-      "Отдельный системный контур для создателя платформы. Здесь будут создаваться компании и их первые управляющие.",
+      "Команда компании: руководитель, менеджеры, поддержка и бухгалтерия с текущей нагрузкой и ролями.",
     readiness: "progress",
-    note: "Сейчас это стартовый вход в системный раздел. Следующим шагом можно наполнить его карточками компаний.",
+    note: "Пока это обзор команды на текущих данных без редактирования и приглашений.",
+    items: [
+      { label: "Список команды", status: "ready" },
+      { label: "Роли сотрудников", status: "ready" },
+      { label: "Нагрузка по заявкам", status: "ready" },
+      { label: "Управление сотрудниками", status: "todo" },
+    ],
+  },
+  "admin-panel": {
+    title: "Архив домов",
+    description:
+      "Раздел создателя платформы для архива домов и системных записей.",
+    readiness: "progress",
+    note: "Сейчас здесь можно держать архив домов и связанные служебные записи.",
     items: [
       { label: "Отдельная навигация", status: "ready" },
       { label: "Доступ только создателю", status: "ready" },
@@ -956,6 +948,7 @@ const views = {
   },
 };
 
+const sideNav = document.querySelector(".side-nav");
 const sideLinks = document.querySelectorAll(".side-link");
 const panels = document.querySelectorAll(".view-panel");
 const summaryStrip = document.getElementById("summary-strip");
@@ -971,13 +964,22 @@ const switchUserButton = document.getElementById("switch-user-button");
 const viewReadiness = document.getElementById("view-readiness");
 const adminPanelGrid = document.getElementById("admin-panel-grid");
 const companyClientsGrid = document.getElementById("company-clients-grid");
+const managersGrid = document.getElementById("managers-grid");
 const propertiesBreadcrumbs = document.getElementById("properties-breadcrumbs");
 const propertiesOverview = document.getElementById("properties-overview");
 const propertiesGrid = document.getElementById("properties-grid");
 const addPropertyButton = document.getElementById("add-property-button");
 const authModal = document.getElementById("auth-modal");
 const authForm = document.getElementById("auth-form");
+const authTitle = document.getElementById("auth-title");
+const authLoginField = document.getElementById("auth-login-field");
+const authLoginInput = document.getElementById("auth-login-input");
+const authPasswordField = document.getElementById("auth-password-field");
+const authPasswordInput = document.getElementById("auth-password-input");
+const authImpersonationField = document.getElementById("auth-impersonation-field");
 const authUserSelect = document.getElementById("auth-user-select");
+const authSubmitButton = document.getElementById("auth-submit-button");
+const authRestoreButton = document.getElementById("auth-restore-button");
 const authMessage = document.getElementById("auth-message");
 const propertyModal = document.getElementById("property-modal");
 const closePropertyModalButton = document.getElementById("close-property-modal");
@@ -1007,15 +1009,23 @@ let currentView = "dashboard";
 let requestStatusFilter = "all";
 let searchTerm = "";
 let editingCompanyId = null;
+let editingManagerId = null;
+let managerFormFeedback = "";
 let selectedPropertyId = null;
 let selectedUnitId = null;
 let selectedPropertyReportYear = new Date().getFullYear();
 let isPropertyReportVisible = false;
 let apiStatus = "unknown";
 let pendingArchivePropertyId = null;
+let archiveRestoreTargets = {};
 let pendingAidatPaymentUnitId = null;
 const ownerEditorDrafts = {};
-let currentUser = loadAuthState();
+const restoredAuthState = loadAuthState();
+let adminSessionToken = restoredAuthState?.token || "";
+let currentUser = restoredAuthState?.user || null;
+let currentImpersonator = restoredAuthState?.impersonator || null;
+let authMode = "login";
+let impersonationTargets = [];
 
 function renderStorageStatus() {
   if (!storageStatusBadge) return;
@@ -1354,6 +1364,8 @@ function normalizeApiProperty(property, index = 0) {
   return {
     id,
     code: property?.code || `OBJ-${String(index + 1).padStart(3, "0")}`,
+    companyId: property?.companyId || "",
+    companyName: property?.companyName || "",
     title: property?.title || "Новый объект",
     city: property?.city || "",
     district: property?.district || "",
@@ -1393,10 +1405,23 @@ function upsertProperty(property) {
   return normalized;
 }
 
+function clearAuthState() {
+  adminSessionToken = "";
+  currentUser = null;
+  currentImpersonator = null;
+  persistAuthState(null);
+}
+
 async function fetchJson(path, options = {}) {
   const hasBody = options.body !== undefined && options.body !== null;
+  const authHeaders = adminSessionToken
+    ? {
+        Authorization: `Bearer ${adminSessionToken}`,
+      }
+    : {};
   const response = await fetch(`${API_BASE_URL}${path}`, {
     headers: {
+      ...authHeaders,
       ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
@@ -1406,12 +1431,77 @@ async function fetchJson(path, options = {}) {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthState();
+    }
     const error = new Error(payload.message || "API request failed");
     error.statusCode = response.status;
     throw error;
   }
 
   return payload;
+}
+
+function applyAdminSession(session) {
+  adminSessionToken = session?.token || "";
+  currentUser = session?.user || null;
+  currentImpersonator = session?.impersonator || null;
+  persistAuthState(session);
+}
+
+async function loginAdminSessionViaApi(login, password) {
+  const payload = await fetchJson("/api/admin-auth/login", {
+    method: "POST",
+    body: JSON.stringify({ login, password }),
+  });
+
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Admin session was not returned by API");
+  }
+
+  return payload.item;
+}
+
+async function validateAdminSessionViaApi() {
+  if (!adminSessionToken) return null;
+
+  const payload = await fetchJson("/api/admin-auth/session");
+
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Admin session is invalid");
+  }
+
+  return payload.item;
+}
+
+async function fetchImpersonationTargetsViaApi() {
+  const payload = await fetchJson("/api/admin-auth/targets");
+  return Array.isArray(payload.items) ? payload.items : [];
+}
+
+async function impersonateAdminSessionViaApi(targetId) {
+  const payload = await fetchJson("/api/admin-auth/impersonate", {
+    method: "POST",
+    body: JSON.stringify({ targetId }),
+  });
+
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Impersonation session was not returned by API");
+  }
+
+  return payload.item;
+}
+
+async function restoreAdminSessionViaApi() {
+  const payload = await fetchJson("/api/admin-auth/restore", {
+    method: "POST",
+  });
+
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Creator session was not returned by API");
+  }
+
+  return payload.item;
 }
 
 async function syncCompaniesFromApi() {
@@ -1467,10 +1557,68 @@ async function deleteCompanyViaApi(companyId) {
   }
 
   setApiStatus("connected");
-  dataStore.companies = dataStore.companies.filter(
-    (company) => company.companyId !== payload.item.companyId
-  );
+  dataStore.companies = removeCompanyState(dataStore.companies, payload.item.companyId);
   persistDataStore();
+  return payload.item;
+}
+
+async function syncManagersFromApi() {
+  if (!canAccessView("managers")) return;
+
+  try {
+    const payload = await fetchJson("/api/managers");
+    if (Array.isArray(payload.items)) {
+      const nonManagers = dataStore.staff.filter((member) => member.role !== "manager");
+      dataStore.staff = [
+        ...nonManagers,
+        ...payload.items.map((item) => normalizeStaffRecord(item)),
+      ];
+      persistDataStore();
+    }
+    setApiStatus("connected");
+  } catch (error) {
+    setApiStatus("offline");
+  }
+}
+
+async function createManagerViaApi(managerInput) {
+  const payload = await fetchJson("/api/managers", {
+    method: "POST",
+    body: JSON.stringify(managerInput),
+  });
+
+  if (!payload.item) {
+    throw new Error("Manager was not returned by API");
+  }
+
+  setApiStatus("connected");
+  return normalizeStaffRecord(payload.item);
+}
+
+async function updateManagerViaApi(managerId, managerInput) {
+  const payload = await fetchJson(`/api/managers/${managerId}`, {
+    method: "PUT",
+    body: JSON.stringify(managerInput),
+  });
+
+  if (!payload.item) {
+    throw new Error("Manager update was not returned by API");
+  }
+
+  setApiStatus("connected");
+  return normalizeStaffRecord(payload.item);
+}
+
+async function deleteManagerViaApi(managerId) {
+  const payload = await fetchJson(`/api/managers/${managerId}`, {
+    method: "DELETE",
+  });
+
+  if (!payload.item) {
+    throw new Error("Manager deletion was not returned by API");
+  }
+
+  setApiStatus("connected");
   return payload.item;
 }
 
@@ -1588,9 +1736,10 @@ async function archivePropertyViaApi(propertyCode) {
   return upsertProperty(payload.item);
 }
 
-async function restorePropertyViaApi(propertyCode) {
+async function restorePropertyViaApi(propertyCode, targetCompanyId = "") {
   const payload = await fetchJson(`/api/properties/${propertyCode}/restore`, {
     method: "PATCH",
+    body: JSON.stringify(targetCompanyId ? { targetCompanyId } : {}),
   });
 
   if (!payload.item) {
@@ -2557,23 +2706,30 @@ function isProjectOwner() {
   return currentUser?.role === "project_owner";
 }
 
+function hasOwnerImpersonationAccess() {
+  return currentUser?.role === "project_owner" || currentImpersonator?.role === "project_owner";
+}
+
 function canAccessView(viewKey) {
   if (!currentUser) return false;
-  return (ROLE_VIEW_ACCESS[currentUser.role] || []).includes(viewKey);
+  return canRoleAccessView(currentUser.role, viewKey);
 }
 
 function canCreateRequests() {
-  return ["project_owner", "manager", "support"].includes(currentUser?.role);
+  return canRoleCreateRequests(currentUser?.role);
 }
 
 function canAddProperties() {
-  return ["project_owner", "manager"].includes(currentUser?.role);
+  return canRoleAddProperties(currentUser?.role);
 }
 
 function canManageProperty(property) {
   if (!currentUser || !property) return false;
-  if (currentUser.role === "project_owner") return true;
-  return currentUser.role === "manager" && property.manager === currentUser.name;
+  return canRoleManageProperty({
+    role: currentUser.role,
+    propertyManagerName: property.manager,
+    currentUserName: currentUser.name,
+  });
 }
 
 function canEditPropertyTelegramIds(property) {
@@ -2584,19 +2740,24 @@ function ensureAccessibleView() {
   if (canAccessView(currentView)) return;
   currentView = canAccessView("dashboard")
     ? "dashboard"
-    : ROLE_VIEW_ACCESS[currentUser?.role || ""]?.[0] || "dashboard";
+    : getDefaultView(currentUser?.role, "dashboard");
 }
 
 function renderAuthUi() {
   renderStorageStatus();
   if (currentUserBadge) {
     currentUserBadge.textContent = currentUser
-      ? `${currentUser.name} • ${currentUser.label}`
+      ? currentImpersonator?.role === "project_owner" && currentUser.role !== "project_owner"
+        ? `${currentUser.name} • ${getUserLabel(currentUser)} • через ${currentImpersonator.name}`
+        : `${currentUser.name} • ${getUserLabel(currentUser)}`
       : "Гость";
   }
 
   if (switchUserButton) {
     switchUserButton.hidden = !currentUser;
+    switchUserButton.textContent = hasOwnerImpersonationAccess()
+      ? "Войти как"
+      : "Сменить пользователя";
   }
 
   if (newRequestButton) {
@@ -2608,17 +2769,62 @@ function renderAuthUi() {
   }
 }
 
-function openAuthModal() {
-  const authUsers = getAuthUsers();
-  authUserSelect.innerHTML = authUsers.map(
-    (user) => `<option value="${user.id}">${user.name} • ${user.label}</option>`
-  ).join("");
-  authMessage.textContent = "";
-  if (currentUser) {
+function renderImpersonationOptions() {
+  authUserSelect.innerHTML = impersonationTargets
+    .map(
+      (user) =>
+        `<option value="${user.id}">${user.name} • ${user.roleLabel}${user.companyName ? ` • ${user.companyName}` : ""}</option>`
+    )
+    .join("");
+
+  if (currentUser?.id) {
     authUserSelect.value = currentUser.id;
-  } else if (authUsers[0]) {
-    authUserSelect.value = authUsers[0].id;
+  } else if (impersonationTargets[0]) {
+    authUserSelect.value = impersonationTargets[0].id;
   }
+}
+
+async function openAuthModal() {
+  authMessage.textContent = "";
+  authSubmitButton.disabled = false;
+  authRestoreButton.hidden = true;
+  authPasswordInput.value = "";
+
+  if (hasOwnerImpersonationAccess()) {
+    authMode = "impersonate";
+    authTitle.textContent = "Войти как пользователь";
+    authLoginField.hidden = true;
+    authPasswordField.hidden = true;
+    authImpersonationField.hidden = false;
+    authSubmitButton.textContent = "Открыть кабинет";
+    authRestoreButton.hidden = !currentImpersonator;
+    authMessage.textContent = "Загружаем список пользователей...";
+    authModal.classList.remove("is-hidden");
+    authModal.setAttribute("aria-hidden", "false");
+
+    try {
+      impersonationTargets = await fetchImpersonationTargetsViaApi();
+      renderImpersonationOptions();
+      authMessage.textContent = currentImpersonator
+        ? `Сейчас открыт кабинет пользователя ${currentUser.name}.`
+        : "Создатель может открыть кабинет любого сотрудника или клиента.";
+    } catch (error) {
+      authUserSelect.innerHTML = "";
+      authSubmitButton.disabled = true;
+      authMessage.textContent = error.message || "Не удалось загрузить список пользователей.";
+    }
+
+    return;
+  }
+
+  authMode = "login";
+  authTitle.textContent = "Вход в кабинет";
+  authLoginField.hidden = false;
+  authPasswordField.hidden = false;
+  authImpersonationField.hidden = true;
+  authSubmitButton.textContent = "Войти";
+  authLoginInput.value = currentUser?.login || "";
+  authMessage.textContent = "Создатель входит логином owner, сотрудники входят по коду сотрудника.";
   authModal.classList.remove("is-hidden");
   authModal.setAttribute("aria-hidden", "false");
 }
@@ -2629,6 +2835,21 @@ function closeAuthModal() {
 }
 
 function renderNav() {
+  const navOrderByRole = {
+    project_owner: ["dashboard", "admin-panel", "company-clients", "properties", "clients", "payments", "requests", "documents"],
+    company_admin: ["dashboard", "managers", "properties", "clients", "payments", "requests"],
+  };
+  const preferredOrder = navOrderByRole[currentUser?.role] || [];
+
+  if (sideNav && preferredOrder.length) {
+    preferredOrder.forEach((viewKey) => {
+      const link = Array.from(sideLinks).find((item) => item.dataset.view === viewKey);
+      if (link) {
+        sideNav.appendChild(link);
+      }
+    });
+  }
+
   sideLinks.forEach((link) => {
     const viewKey = link.dataset.view;
     const isVisible = canAccessView(viewKey);
@@ -2684,10 +2905,17 @@ function renderSummary() {
   const activePropertiesCount = dataStore.properties.filter(
     (property) => property.status !== "archived"
   ).length;
+  const managedPropertiesCount = getVisibleProperties().filter(
+    (property) => property.status !== "archived"
+  ).length;
 
   const cards = [
-    { label: "Активные клиенты", value: activeClients },
-    { label: "Открытые заявки", value: totalOpenRequests },
+    currentUser?.role === "company_admin"
+      ? { label: "Домов в обслуживании", value: managedPropertiesCount }
+      : { label: "Активные клиенты", value: activeClients },
+    ...(currentUser?.role === "project_owner"
+      ? []
+      : [{ label: "Открытые заявки", value: totalOpenRequests }]),
     { label: "Просроченные оплаты", value: overduePayments },
     { label: "Объекты в работе", value: activePropertiesCount },
   ];
@@ -2884,7 +3112,7 @@ function renderDashboard() {
         <div class="load-row" data-ui-id="row-staff-${member.id}">
           <div>
             <strong>${member.name}</strong>
-            <p>${member.role}</p>
+            <p>${getRoleLabel(member.role)}</p>
           </div>
           <div>
             <div class="load-bar"><span style="width:${loadPercent}%"></span></div>
@@ -2975,6 +3203,97 @@ function renderRequestsTable() {
     : '<div class="empty-state">По текущим фильтрам заявки не найдены.</div>';
 }
 
+function nextManagerId() {
+  const maxValue = dataStore.staff.reduce((max, member) => {
+    const numeric = Number(String(member.id || "").replace("ST-", ""));
+    return Number.isNaN(numeric) ? max : Math.max(max, numeric);
+  }, 0);
+
+  return `ST-${String(maxValue + 1).padStart(2, "0")}`;
+}
+
+function renderManagers() {
+  if (!managersGrid) return;
+
+  const managers = dataStore.staff
+    .filter((member) => member.role === "manager")
+    .filter((member) =>
+      matchesSearch(`${member.id} ${member.name} ${member.phone || ""} ${member.status || ""}`)
+    );
+  const canManageManagers = ["project_owner", "company_admin"].includes(currentUser?.role);
+
+  const managerForm = canManageManagers
+    ? `
+      <article class="card manager-panel-card" data-ui-id="card-manager-create">
+        <div class="card-head">
+          <h4>${editingManagerId ? "Редактировать менеджера" : "Добавить менеджера"}</h4>
+          <span>${editingManagerId ? editingManagerId : "Новый сотрудник"}</span>
+        </div>
+        <form id="manager-form" class="form-grid" data-manager-form>
+          <label class="field">
+            <span>ФИО менеджера</span>
+            <input name="name" type="text" placeholder="Введите имя" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.name || "") : ""}" required />
+          </label>
+          <label class="field">
+            <span>Логин</span>
+            <input name="login" type="text" placeholder="manager.login" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.login || "") : ""}" required />
+          </label>
+          <label class="field">
+            <span>Пароль</span>
+            <input name="password" type="text" placeholder="${editingManagerId ? "Оставьте пустым, чтобы не менять" : "Введите пароль"}" ${editingManagerId ? "" : "required"} />
+          </label>
+          <label class="field">
+            <span>Телефон</span>
+            <input name="phone" type="text" placeholder="+90 555 ..." value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.phone || "") : ""}" />
+          </label>
+          <label class="field">
+            <span>Статус</span>
+            <select name="status">
+              <option value="active" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "active" ? "selected" : "") : "selected"}>Активен</option>
+              <option value="inactive" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "inactive" ? "selected" : "") : ""}>Неактивен</option>
+            </select>
+          </label>
+          <div class="modal-actions field-full manager-form-actions">
+            <div id="manager-form-message" class="form-message">${managerFormFeedback}</div>
+            ${editingManagerId ? '<button type="button" class="ghost-button" data-cancel-manager-edit>Отмена</button>' : ''}
+            <button type="submit" class="primary-button">${editingManagerId ? "Сохранить" : "Добавить"}</button>
+          </div>
+        </form>
+      </article>
+    `
+    : "";
+
+  const managerCards = managers.length
+    ? managers
+        .map(
+          (member) => `
+            <article class="entity-card" data-ui-id="card-manager-${member.id}">
+              <p class="eyebrow">${member.id}</p>
+              <strong>${member.name}</strong>
+              <p>Менеджер компании${member.phone ? ` • ${member.phone}` : ""}</p>
+              <div class="entity-meta">
+                <span>Логин: ${member.login || member.id}</span>
+                <span>Пароль: скрыт</span>
+              </div>
+              <div class="entity-meta">
+                <span>${member.status === "active" ? "Активен" : "Неактивен"}</span>
+                <span>${member.openRequests} открытых заявок</span>
+              </div>
+              ${canManageManagers ? `
+                <div class="company-card-actions manager-card-actions">
+                  <button type="button" class="ghost-button" data-edit-manager="${member.id}">Редактировать</button>
+                  <button type="button" class="ghost-button" data-delete-manager="${member.id}">Удалить</button>
+                </div>
+              ` : ""}
+            </article>
+          `
+        )
+        .join("")
+    : '<div class="empty-state">Менеджеры этой компании пока не добавлены.</div>';
+
+  managersGrid.innerHTML = `${managerForm}${managerCards}`;
+}
+
 function renderClients() {
   const filtered = dataStore.clients.filter((client) =>
     matchesSearch(`${client.id} ${client.name} ${client.phone} ${client.properties.join(" ")}`)
@@ -2986,7 +3305,7 @@ function renderClients() {
         <article class="entity-card" data-ui-id="card-client-${client.id}">
           <p class="eyebrow">${client.id}</p>
           <strong>${client.name}</strong>
-          <p>${client.role} • ${client.phone}</p>
+          <p>${getRoleLabel(client.role)} • ${client.phone}</p>
           <div class="entity-meta">
             <span>${client.telegram}</span>
             <span>${client.status}</span>
@@ -3381,150 +3700,79 @@ function renderPayments() {
 function renderAdminPanel() {
   if (!adminPanelGrid) return;
 
-  adminPanelGrid.innerHTML = isProjectOwner()
+  const archivedProperties = dataStore.properties
+    .filter((property) => property.status === "archived")
+    .sort((left, right) => String(left.code || "").localeCompare(String(right.code || ""), "ru", {
+      numeric: true,
+      sensitivity: "base",
+    }));
+  const activeCompanies = dataStore.companies.filter((company) => company.status !== "blocked");
+
+  const archiveCard = isProjectOwner()
     ? `
-      <article class="entity-card" data-ui-id="card-admin-panel-companies">
-        <p class="eyebrow">System section</p>
-        <strong>Клиенты (Компании)</strong>
-        <p>Реестр управляющих компаний, их Telegram-привязок и первых управляющих.</p>
-        <div class="entity-meta">
-          <span>Только для создателя</span>
-          <span>Следующий шаг</span>
+      <article class="card properties-archive" data-ui-id="card-owner-house-archive">
+        <div class="card-head">
+          <h4>Удаленные дома компаний</h4>
+          <span>Создатель может восстановить дом в любую компанию</span>
         </div>
-        <button class="primary-button" data-open-admin-route="company-clients" data-ui-id="btn-open-company-clients">
-          Открыть компании
-        </button>
+        <div class="properties-archive-list">
+          ${
+            archivedProperties.length
+              ? archivedProperties
+                  .map((property) => {
+                    const selectedCompanyId =
+                      archiveRestoreTargets[property.id] ||
+                      property.companyId ||
+                      activeCompanies[0]?.companyId ||
+                      "";
+                    return `
+                      <div class="summary-mini archive-entry" data-ui-id="owner-archive-property-${property.code}">
+                        <div class="archive-entry-copy">
+                          <strong>${property.code} • ${property.title}</strong>
+                          <p>${property.city}${property.district ? `, ${property.district}` : ""}</p>
+                          <p>Была у компании: ${property.companyName || property.companyId || "не указана"}</p>
+                        </div>
+                        <div class="archive-entry-actions">
+                          <select data-archive-target-company="${property.id}">
+                            ${activeCompanies
+                              .map(
+                                (company) =>
+                                  `<option value="${company.companyId}" ${company.companyId === selectedCompanyId ? "selected" : ""}>${company.title}</option>`
+                              )
+                              .join("")}
+                          </select>
+                          <button
+                            class="ghost-button inline-button"
+                            data-restore-archived-property="${property.id}"
+                            data-ui-id="btn-owner-restore-property-${property.code}"
+                            ${activeCompanies.length ? "" : "disabled"}
+                          >
+                            Восстановить
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  })
+                  .join("")
+              : '<div class="muted-note">В архиве домов пока ничего нет.</div>'
+          }
+        </div>
       </article>
     `
-    : '<div class="empty-state">Этот раздел доступен только создателю платформы.</div>';
+    : "";
+
+  adminPanelGrid.innerHTML = archiveCard || '<div class="empty-state">Этот раздел доступен только создателю платформы.</div>';
 }
 
 function renderCompanyClients() {
   if (!companyClientsGrid) return;
 
-  companyClientsGrid.innerHTML = isProjectOwner()
-    ? `
-      <article class="card" data-ui-id="card-company-create">
-        <div class="card-head">
-          <h4>Добавить компанию</h4>
-          <span>Platform registry</span>
-        </div>
-        <form id="company-create-form" class="form-grid" data-ui-id="form-company-create">
-          <label class="field" data-ui-id="field-company-id">
-            <span>ID компании</span>
-            <input name="companyId" type="text" placeholder="Например, MC-001" required />
-          </label>
-          <label class="field" data-ui-id="field-company-title">
-            <span>Название компании</span>
-            <input name="title" type="text" placeholder="Например, Tulip Antalya" required />
-          </label>
-          <label class="field" data-ui-id="field-company-telegram-id">
-            <span>Telegram ID компании</span>
-            <input name="telegramId" type="text" placeholder="Например, 254348031" />
-          </label>
-          <label class="field" data-ui-id="field-company-telegram-username">
-            <span>Telegram username</span>
-            <input name="telegramUsername" type="text" placeholder="@company_login" />
-          </label>
-          <div class="modal-actions field-full" data-ui-id="actions-company-create">
-            <div id="company-create-message" class="form-message" data-ui-id="message-company-create"></div>
-            <button type="submit" class="primary-button" data-ui-id="btn-create-company">
-              Зарегистрировать компанию
-            </button>
-          </div>
-        </form>
-        <p class="muted-note">После регистрации компания входит через Telegram по кнопке и вводит временный пароль. При первом входе пароль нужно сменить.</p>
-      </article>
-      ${
-        dataStore.companies.length
-          ? dataStore.companies
-              .map(
-                (company) =>
-                  editingCompanyId === company.companyId
-                    ? `
-                      <article class="card" data-ui-id="card-company-edit-${company.companyId}">
-                        <div class="card-head">
-                          <h4>Редактировать компанию</h4>
-                          <span>${company.companyId}</span>
-                        </div>
-                        <form class="form-grid" data-company-edit-form="${company.companyId}">
-                          <label class="field">
-                            <span>Название компании</span>
-                            <input name="title" type="text" value="${company.title}" required />
-                          </label>
-                          <label class="field">
-                            <span>Статус</span>
-                            <select name="status">
-                              <option value="active" ${company.status === "active" ? "selected" : ""}>active</option>
-                              <option value="invited" ${company.status === "invited" ? "selected" : ""}>invited</option>
-                              <option value="blocked" ${company.status === "blocked" ? "selected" : ""}>blocked</option>
-                            </select>
-                          </label>
-                          <label class="field">
-                            <span>Telegram ID</span>
-                            <input name="telegramId" type="text" value="${company.telegramId || ""}" />
-                          </label>
-                          <label class="field">
-                            <span>Telegram username</span>
-                            <input name="telegramUsername" type="text" value="${company.telegramUsername || ""}" />
-                          </label>
-                          <div class="modal-actions field-full">
-                            <div class="entity-meta">
-                              <span>Временный пароль: ${company.tempPassword}</span>
-                              <span>${company.mustChangePassword ? "Нужно сменить пароль" : "Пароль подтвержден"}</span>
-                            </div>
-                            <button type="button" class="ghost-button" data-company-edit-cancel="${company.companyId}">Отмена</button>
-                            <button type="submit" class="primary-button">Сохранить</button>
-                          </div>
-                        </form>
-                      </article>
-                    `
-                    : `
-                      <article class="entity-card" data-ui-id="card-company-${company.companyId}">
-                        <p class="eyebrow">${company.companyId}</p>
-                        <strong>${company.title}</strong>
-                        <p>Вход: Telegram по кнопке + пароль</p>
-                        <div class="entity-meta">
-                          <span>Статус: ${company.status}</span>
-                          <span>${company.mustChangePassword ? "Нужно сменить пароль" : "Пароль подтвержден"}</span>
-                        </div>
-                        <div class="entity-meta">
-                          <span>Telegram ID: ${company.telegramId || "не указан"}</span>
-                          <span>${company.telegramUsername || "username не указан"}</span>
-                        </div>
-                        <div class="entity-meta">
-                          <span>Временный пароль: ${company.tempPassword}</span>
-                          <span>Создано: ${formatDateTime(company.createdAt)}</span>
-                        </div>
-                        <div class="modal-actions company-card-actions">
-                          <button type="button" class="ghost-button" data-company-edit="${company.companyId}">
-                            Редактировать
-                          </button>
-                          <button type="button" class="ghost-button" data-company-delete="${company.companyId}">
-                            Удалить
-                          </button>
-                        </div>
-                      </article>
-                    `
-              )
-              .join("")
-          : `
-            <article class="card" data-ui-id="card-company-clients-empty">
-              <div class="card-head">
-                <h4>Компании</h4>
-                <span>Platform registry</span>
-              </div>
-              <p>Пока нет зарегистрированных компаний. Добавьте первую компанию по ID.</p>
-            </article>
-          `
-      }
-      <article class="card" data-ui-id="card-company-clients-back">
-        <button class="ghost-button" data-open-admin-route="admin-panel" data-ui-id="btn-back-admin-panel">
-          Назад в админ панель
-        </button>
-      </article>
-    `
-    : '<div class="empty-state">Этот раздел доступен только создателю платформы.</div>';
+  companyClientsGrid.innerHTML = renderCompanyClientsView({
+    isProjectOwner: isProjectOwner(),
+    companies: dataStore.companies,
+    editingCompanyId,
+    formatDateTime,
+  });
 }
 
 function renderDocuments() {
@@ -3631,6 +3879,7 @@ function renderAll() {
   renderDashboard();
   renderAdminPanel();
   renderCompanyClients();
+  renderManagers();
   renderRequestFilters();
   renderRequestsTable();
   renderClients();
@@ -3661,6 +3910,41 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  const editManagerButton = event.target.closest("[data-edit-manager]");
+  if (editManagerButton) {
+    editingManagerId = editManagerButton.dataset.editManager;
+    managerFormFeedback = "";
+    renderManagers();
+    return;
+  }
+
+  const cancelManagerEditButton = event.target.closest("[data-cancel-manager-edit]");
+  if (cancelManagerEditButton) {
+    editingManagerId = null;
+    managerFormFeedback = "";
+    renderManagers();
+    return;
+  }
+
+  const deleteManagerButton = event.target.closest("[data-delete-manager]");
+  if (deleteManagerButton) {
+    const managerId = deleteManagerButton.dataset.deleteManager;
+    deleteManagerViaApi(managerId)
+      .then(async () => {
+        editingManagerId = null;
+        managerFormFeedback = `Менеджер ${managerId} удален.`;
+        await syncManagersFromApi();
+        renderManagers();
+        renderSummary();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        managerFormFeedback = error.message || "Не удалось удалить менеджера.";
+        renderManagers();
+      });
+    return;
+  }
+
   const editCompanyButton = event.target.closest("[data-company-edit]");
   if (editCompanyButton) {
     editingCompanyId = editCompanyButton.dataset.companyEdit;
@@ -3682,9 +3966,7 @@ document.addEventListener("click", (event) => {
   deleteCompanyViaApi(companyId)
     .catch(() => {
       setApiStatus("offline");
-      dataStore.companies = dataStore.companies.filter(
-        (company) => company.companyId !== companyId
-      );
+      dataStore.companies = removeCompanyState(dataStore.companies, companyId);
       persistDataStore();
     })
     .finally(() => {
@@ -3703,6 +3985,7 @@ document.addEventListener("submit", (event) => {
       .trim()
       .toUpperCase();
     const title = String(formData.get("title") || "").trim();
+    const directorName = String(formData.get("directorName") || "").trim();
     const telegramId = String(formData.get("telegramId") || "").trim();
     const telegramUsername = String(formData.get("telegramUsername") || "").trim();
     const messageNode = document.getElementById("company-create-message");
@@ -3728,6 +4011,7 @@ document.addEventListener("submit", (event) => {
     createCompanyViaApi({
       companyId,
       title,
+      directorName,
       telegramId,
       telegramUsername,
       status: "active",
@@ -3745,6 +4029,7 @@ document.addEventListener("submit", (event) => {
           id: companyId,
           companyId,
           title,
+          directorName,
           telegramId,
           telegramUsername,
           telegramLoginMode: "telegram_password",
@@ -3762,6 +4047,58 @@ document.addEventListener("submit", (event) => {
     return;
   }
 
+  const managerForm = event.target.closest("[data-manager-form]");
+  if (managerForm) {
+    event.preventDefault();
+
+    const formData = new FormData(managerForm);
+    const name = String(formData.get("name") || "").trim();
+    const login = String(formData.get("login") || "").trim();
+    const password = String(formData.get("password") || "");
+    const phone = String(formData.get("phone") || "").trim();
+    const status = String(formData.get("status") || "active").trim() || "active";
+    const email = "";
+
+    if (!name) {
+      managerFormFeedback = "Введите имя менеджера.";
+      renderManagers();
+      return;
+    }
+
+    if (!login) {
+      managerFormFeedback = "Введите логин менеджера.";
+      renderManagers();
+      return;
+    }
+
+    if (!editingManagerId && !password) {
+      managerFormFeedback = "Введите пароль менеджера.";
+      renderManagers();
+      return;
+    }
+
+    const request = editingManagerId
+      ? updateManagerViaApi(editingManagerId, { login, password, name, phone, email, status })
+      : createManagerViaApi({ login, password, name, phone, email, status });
+
+    request
+      .then(async (managerItem) => {
+        managerFormFeedback = editingManagerId
+          ? `Менеджер ${managerItem.name} обновлен. Логин: ${managerItem.login || managerItem.id}.${password ? " Пароль обновлен." : ""}`
+          : `Менеджер ${managerItem.name} добавлен. Логин: ${managerItem.login || managerItem.id}. Пароль сохранен.`;
+        editingManagerId = null;
+        await syncManagersFromApi();
+        renderManagers();
+        renderSummary();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        managerFormFeedback = error.message || "Не удалось сохранить менеджера.";
+        renderManagers();
+      });
+    return;
+  }
+
   const editForm = event.target.closest("[data-company-edit-form]");
   if (!editForm) return;
 
@@ -3771,6 +4108,7 @@ document.addEventListener("submit", (event) => {
   const formData = new FormData(editForm);
   const nextPayload = {
     title: String(formData.get("title") || "").trim(),
+    directorName: String(formData.get("directorName") || "").trim(),
     status: String(formData.get("status") || "").trim() || "active",
     telegramId: String(formData.get("telegramId") || "").trim(),
     telegramUsername: String(formData.get("telegramUsername") || "").trim(),
@@ -3792,6 +4130,7 @@ document.addEventListener("submit", (event) => {
 
 searchInput.addEventListener("input", (event) => {
   searchTerm = event.target.value.trim();
+  renderManagers();
   renderRequestsTable();
   renderClients();
   renderProperties();
@@ -3799,32 +4138,81 @@ searchInput.addEventListener("input", (event) => {
   renderDocuments();
 });
 
-refreshButton.addEventListener("click", () => {
-  renderAll();
-  persistNavigationState();
-});
-
-switchUserButton.addEventListener("click", () => {
-  openAuthModal();
-});
-
-authForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const user = getAuthUsers().find((item) => item.id === authUserSelect.value);
-  if (!user) {
-    authMessage.textContent = "Выберите пользователя.";
-    return;
+refreshButton.addEventListener("click", async () => {
+  if (canAccessView("managers")) {
+    await syncManagersFromApi();
   }
-
-  currentUser = user;
-  persistAuthState(user);
-  closeAuthModal();
-  ensureAccessibleView();
-  renderNav();
-  renderAuthUi();
-  setView(currentView);
   renderAll();
   persistNavigationState();
+});
+
+switchUserButton.addEventListener("click", async () => {
+  await openAuthModal();
+});
+
+authRestoreButton.addEventListener("click", async () => {
+  authMessage.textContent = "Возвращаем сессию создателя...";
+
+  try {
+    const session = await restoreAdminSessionViaApi();
+    applyAdminSession(session);
+    await syncCompaniesFromApi();
+    await syncManagersFromApi();
+    await syncPropertiesFromApi();
+    closeAuthModal();
+    ensureAccessibleView();
+    renderNav();
+    renderAuthUi();
+    setView(currentView);
+    renderAll();
+    persistNavigationState();
+  } catch (error) {
+    authMessage.textContent = error.message || "Не удалось вернуться к создателю.";
+  }
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  try {
+    if (authMode === "impersonate") {
+      const targetId = String(authUserSelect.value || "").trim();
+      if (!targetId) {
+        authMessage.textContent = "Выберите пользователя.";
+        return;
+      }
+
+      authMessage.textContent = "Открываем кабинет пользователя...";
+      const session = await impersonateAdminSessionViaApi(targetId);
+      applyAdminSession(session);
+    } else {
+      const login = String(authLoginInput.value || "").trim();
+      const password = String(authPasswordInput.value || "");
+      if (!login || !password) {
+        authMessage.textContent = "Введите логин и пароль.";
+        return;
+      }
+
+      authMessage.textContent = "Открываем серверную сессию...";
+      const session = await loginAdminSessionViaApi(login, password);
+      applyAdminSession(session);
+    }
+
+    if (currentUser.role !== "client") {
+      await syncCompaniesFromApi();
+      await syncManagersFromApi();
+      await syncPropertiesFromApi();
+    }
+    closeAuthModal();
+    ensureAccessibleView();
+    renderNav();
+    renderAuthUi();
+    setView(currentView);
+    renderAll();
+    persistNavigationState();
+  } catch (error) {
+    authMessage.textContent = error.message || "Не удалось открыть сессию.";
+  }
 });
 
 addPropertyButton.addEventListener("click", () => {
@@ -4017,6 +4405,42 @@ propertiesGrid.addEventListener("click", async (event) => {
     openArchiveConfirmModal(property.id);
     return;
   }
+});
+
+adminPanelGrid?.addEventListener("change", (event) => {
+  const companySelect = event.target.closest("[data-archive-target-company]");
+  if (!companySelect) return;
+
+  archiveRestoreTargets[companySelect.dataset.archiveTargetCompany] = companySelect.value;
+});
+
+adminPanelGrid?.addEventListener("click", async (event) => {
+  const restoreArchivedPropertyButton = event.target.closest("[data-restore-archived-property]");
+  if (!restoreArchivedPropertyButton) return;
+
+  const property = getPropertyById(restoreArchivedPropertyButton.dataset.restoreArchivedProperty);
+  if (!property) return;
+
+  const targetCompanyId =
+    archiveRestoreTargets[property.id] || property.companyId || dataStore.companies[0]?.companyId || "";
+
+  try {
+    await restorePropertyViaApi(property.code, targetCompanyId);
+  } catch (error) {
+    setApiStatus("offline");
+    property.status = "active";
+    property.companyId = targetCompanyId || property.companyId;
+    property.companyName =
+      dataStore.companies.find((company) => company.companyId === (targetCompanyId || property.companyId))?.title ||
+      property.companyName;
+    persistDataStore();
+  }
+
+  delete archiveRestoreTargets[property.id];
+  renderAdminPanel();
+  renderProperties();
+  renderSummary();
+  persistNavigationState();
 });
 
 propertiesOverview.addEventListener("click", async (event) => {
@@ -4237,11 +4661,25 @@ propertiesBreadcrumbs.addEventListener("click", (event) => {
 });
 
 async function bootstrapAdminCabinet() {
-  await syncCompaniesFromApi();
-  await syncPropertiesFromApi();
-  if (!currentUser) {
+  if (adminSessionToken) {
+    try {
+      const session = await validateAdminSessionViaApi();
+      applyAdminSession(session);
+    } catch (error) {
+      clearAuthState();
+    }
+  }
+
+  if (currentUser) {
+    if (currentUser.role !== "client") {
+      await syncCompaniesFromApi();
+      await syncManagersFromApi();
+      await syncPropertiesFromApi();
+    }
+  } else {
     openAuthModal();
   }
+
   await restoreNavigationState();
   ensureAccessibleView();
   setView(currentView);

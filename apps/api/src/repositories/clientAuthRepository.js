@@ -1,5 +1,10 @@
 import crypto from "node:crypto";
 import { query, withTransaction } from "../db.js";
+import {
+  buildCompanyDescriptor,
+  buildRoleDescriptor,
+  getRoleLabel,
+} from "../auth/accessModel.js";
 import { getPropertyByCode } from "./propertiesRepository.js";
 import {
   FIND_ACCESS_LINK_BY_CODE_SQL,
@@ -88,6 +93,10 @@ export async function resolveTelegramClientAccess({ telegramId, telegramUsername
     }
 
     const items = [];
+    const roleInfo = buildRoleDescriptor("client", {
+      scope: "client",
+      actorType: "client",
+    });
 
     for (const row of result.rows) {
       if (telegramUsername) {
@@ -100,6 +109,10 @@ export async function resolveTelegramClientAccess({ telegramId, telegramUsername
       const accessCode = await ensureAccessLink(client, row);
 
       items.push({
+        actorType: "client",
+        role: roleInfo.code,
+        roleLabel: roleInfo.label,
+        roleInfo,
         clientId: row.client_id,
         clientCode: row.client_code,
         clientName: row.client_name,
@@ -128,6 +141,12 @@ export async function resolveTelegramActorAccess({ telegramId, telegramUsername 
     if (clientItems.length) {
       return {
         actorType: "client",
+        role: "client",
+        roleLabel: getRoleLabel("client"),
+        roleInfo: buildRoleDescriptor("client", {
+          scope: "client",
+          actorType: "client",
+        }),
         items: clientItems,
       };
     }
@@ -149,6 +168,8 @@ export async function resolveTelegramActorAccess({ telegramId, telegramUsername 
       cabinetPath: companyAccess.cabinetPath,
       company: companyAccess.company,
       role: companyAccess.role,
+      roleLabel: companyAccess.roleLabel,
+      roleInfo: companyAccess.roleInfo,
       mustChangePassword: companyAccess.mustChangePassword,
       staff: null,
     };
@@ -162,18 +183,29 @@ export async function resolveTelegramActorAccess({ telegramId, telegramUsername 
   const staffRow = staffResult.rows[0];
 
   if (staffRow) {
+    const roleInfo = buildRoleDescriptor(staffRow.staff_role, {
+      scope: "company",
+      actorType: "company_staff",
+    });
+
     return {
-      actorType: "company",
-      company: {
+      actorType: "company_staff",
+      company: buildCompanyDescriptor({
         id: staffRow.management_company_id,
         code: staffRow.management_company_code,
         name: staffRow.management_company_name,
-      },
+        status: staffRow.management_company_status || "active",
+      }),
+      role: roleInfo.code,
+      roleLabel: roleInfo.label,
+      roleInfo,
       staff: {
         id: staffRow.staff_id,
         code: staffRow.staff_code,
         name: staffRow.staff_name,
-        role: staffRow.staff_role,
+        role: roleInfo.code,
+        roleLabel: roleInfo.label,
+        roleInfo,
         phone: staffRow.staff_phone || "",
       },
     };
@@ -220,8 +252,16 @@ export async function getClientCabinetSessionByAccessCode(accessCode) {
     row.unit_code,
     row.client_id,
   ]);
+  const roleInfo = buildRoleDescriptor("client", {
+    scope: "client",
+    actorType: "client",
+  });
 
   return {
+    actorType: "client",
+    role: roleInfo.code,
+    roleLabel: roleInfo.label,
+    roleInfo,
     accessCode,
     cabinetPath: buildCabinetPath(accessCode),
     client: {
@@ -239,6 +279,7 @@ export async function getClientCabinetSessionByAccessCode(accessCode) {
           title: property.title,
           city: property.city,
           district: property.district,
+          type: property.type,
           status: property.status,
         }
       : {
@@ -247,44 +288,52 @@ export async function getClientCabinetSessionByAccessCode(accessCode) {
           title: row.property_title,
           city: row.city,
           district: row.district,
-          status: row.property_status,
+          type: "residential building",
+          status: row.property_status || "active",
         },
-    unit: {
-      id: row.unit_id,
-      code: row.unit_code,
-      number: row.unit_number,
-      floor: row.floor_label || "-",
-      area: Number(row.area_sqm || 0),
-      layoutType: row.layout_type || "",
-      layoutFeature: row.layout_feature || "",
-      waterAccountNumber: row.water_account_number || "",
-      electricityAccountNumber: row.electricity_account_number || "",
-      residents: Number(row.resident_count || 0),
-      status: row.unit_status,
-      owners: unit?.owners || [],
-      balances: balancesResult.rows.map(mapBalanceRow),
-      chargeLogs: chargesResult.rows.map(mapChargeRow),
-    },
-    documents: documentsResult.rows.map((documentRow) => ({
-      id: documentRow.id,
-      code: documentRow.code,
-      title: documentRow.title,
-      type: documentRow.document_type,
-      storageUrl: documentRow.storage_url || "",
-      visibility: documentRow.visibility_scope,
-      createdAt: documentRow.created_at,
+    unit: unit
+      ? {
+          id: unit.id,
+          code: unit.code,
+          number: unit.number,
+          floor: unit.floor,
+          area: unit.area,
+          residents: unit.residents,
+          status: unit.status,
+          owners: unit.owners || [],
+        }
+      : {
+          id: row.unit_id,
+          code: row.unit_code,
+          number: row.unit_number,
+          floor: row.floor_label || "",
+          area: Number(row.area_sqm || 0),
+          residents: Number(row.resident_count || 0),
+          status: row.unit_status || "occupied",
+          owners: [],
+        },
+    balances: balancesResult.rows.map(mapBalanceRow),
+    charges: chargesResult.rows.map(mapChargeRow),
+    documents: documentsResult.rows.map((documentItem) => ({
+      id: documentItem.id,
+      code: documentItem.code,
+      title: documentItem.title,
+      type: documentItem.document_type || "document",
+      url: documentItem.storage_url || "",
+      visibility: documentItem.visibility_scope || "client",
+      createdAt: documentItem.created_at,
     })),
-    requests: requestsResult.rows.map((requestRow) => ({
-      id: requestRow.id,
-      code: requestRow.code,
-      category: requestRow.category,
-      title: requestRow.title,
-      description: requestRow.description || "",
-      priority: requestRow.priority,
-      status: requestRow.status,
-      source: requestRow.source,
-      createdAt: requestRow.created_at,
-      assignee: requestRow.assignee_name || "",
+    requests: requestsResult.rows.map((request) => ({
+      id: request.id,
+      code: request.code,
+      category: request.category || "request",
+      title: request.title,
+      description: request.description || "",
+      priority: request.priority || "normal",
+      status: request.status || "new",
+      source: request.source || "telegram",
+      createdAt: request.created_at,
+      assignee: request.assignee_name || "Не назначен",
     })),
   };
 }

@@ -2,8 +2,6 @@ DO $$
 DECLARE
   company_id UUID;
   staff_kemal UUID;
-  staff_irina UUID;
-  staff_murat UUID;
   client_elena UUID;
   client_ahmet UUID;
   client_svetlana UUID;
@@ -23,16 +21,13 @@ BEGIN
   ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
   RETURNING id INTO company_id;
 
-  INSERT INTO staff (management_company_id, code, full_name, role, phone, status)
+  INSERT INTO staff (management_company_id, code, login, full_name, role, phone, status)
   VALUES
-    (company_id, 'ST-01', 'Kemal Yilmaz', 'manager', '+90 555 100 00 01', 'active'),
-    (company_id, 'ST-02', 'Irina Volkova', 'support', '+90 555 100 00 02', 'active'),
-    (company_id, 'ST-03', 'Murat Demir', 'accountant', '+90 555 100 00 03', 'active')
+    (company_id, 'ST-01', 'ST-01', 'Kemal Yilmaz', 'manager', '+90 555 100 00 01', 'active'),
+    (company_id, 'ST-00', 'ST-00', 'Tulip Antalya Admin', 'company_admin', '+90 555 100 00 00', 'active')
   ON CONFLICT (code) DO NOTHING;
 
   SELECT id INTO staff_kemal FROM staff WHERE code = 'ST-01';
-  SELECT id INTO staff_irina FROM staff WHERE code = 'ST-02';
-  SELECT id INTO staff_murat FROM staff WHERE code = 'ST-03';
 
   INSERT INTO clients (management_company_id, code, full_name, client_type, phone, telegram_username, status)
   VALUES
@@ -54,7 +49,7 @@ BEGIN
   INSERT INTO properties (management_company_id, code, title, city, district, property_type, status, unit_count, manager_staff_id)
   VALUES
     (company_id, 'OBJ-001', 'Sunset Residence A-12', 'Antalya', 'Konyaalti', 'residential_building', 'active', 4, staff_kemal),
-    (company_id, 'OBJ-002', 'Olive Garden Villa 4', 'Bodrum', 'Yalikavak', 'villa_complex', 'active', 3, staff_irina),
+    (company_id, 'OBJ-002', 'Olive Garden Villa 4', 'Bodrum', 'Yalikavak', 'villa_complex', 'active', 3, staff_kemal),
     (company_id, 'OBJ-003', 'Blue Coast B-8', 'Antalya', 'Lara', 'residential_building', 'maintenance_watch', 2, staff_kemal)
   ON CONFLICT (code) DO NOTHING;
 
@@ -103,6 +98,6 @@ BEGIN
   INSERT INTO requests (management_company_id, code, unit_id, client_id, source, category, title, priority, status, assigned_staff_id)
   VALUES
     (company_id, 'REQ-1042', unit_obj_002_a, client_olga, 'telegram', 'repair', 'Протечка в ванной', 'urgent', 'in_progress', staff_kemal),
-    (company_id, 'REQ-1043', unit_obj_003_101, client_ahmet, 'web', 'document', 'Продление договора аренды', 'medium', 'waiting', staff_irina)
+    (company_id, 'REQ-1043', unit_obj_003_101, client_ahmet, 'web', 'document', 'Продление договора аренды', 'medium', 'waiting', staff_kemal)
   ON CONFLICT (code) DO NOTHING;
 END $$;

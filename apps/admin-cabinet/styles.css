@@ -1020,6 +1020,17 @@ th {
   gap: 10px;
   justify-content: flex-end;
 }
+.manager-panel-card {
+  grid-column: 1 / -1;
+}
+
+.manager-form-actions {
+  justify-content: flex-end;
+}
+
+.manager-card-actions {
+  margin-top: 12px;
+}
 
 .form-message {
   margin-right: auto;

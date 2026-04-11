@@ -1,3 +1,4 @@
+import { getRoleLabel } from "../../../packages/core/src/accessModel.js";
 import { getConfig } from "./config.js";
 import { resolveTelegramUser } from "./api.js";
 import {
@@ -84,7 +85,7 @@ async function replyWithCabinetLinks(message) {
           telegramIdNote,
           "",
           `Компания: <b>${resolvedUser.company?.name || "-"}</b>`,
-          `Роль: <b>${resolvedUser.role || "company_admin"}</b>`,
+          `Роль: <b>${resolvedUser.roleLabel || getRoleLabel(resolvedUser.role) || "Руководитель компании"}</b>`,
           "",
           "Нажмите кнопку ниже, чтобы открыть кабинет компании.",
           resolvedUser.mustChangePassword

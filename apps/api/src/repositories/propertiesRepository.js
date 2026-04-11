@@ -61,6 +61,8 @@ function mapPropertyListRow(row) {
   return {
     id: row.id,
     code: row.code,
+    companyId: row.management_company_code || "",
+    companyName: row.management_company_name || "",
     title: row.title,
     city: row.city,
     district: row.district,
@@ -125,6 +127,8 @@ function mapPropertyDetail(rows) {
   return {
     id: first.property_id,
     code: first.property_code,
+    companyId: first.management_company_code || "",
+    companyName: first.management_company_name || "",
     title: first.property_title,
     city: first.city,
     district: first.district,
@@ -434,15 +438,124 @@ export async function archiveProperty(propertyCode) {
   return result.rows[0];
 }
 
-export async function restoreProperty(propertyCode) {
-  const result = await query(RESTORE_PROPERTY_SQL, [propertyCode]);
-  if (!result.rows[0]?.code) {
-    const error = new Error("Property not found");
-    error.statusCode = 404;
-    throw error;
-  }
+export async function restoreProperty(propertyCode, options = {}) {
+  return withTransaction(async (client) => {
+    const propertyResult = await client.query(
+      `SELECT p.id, p.code, p.management_company_id
+       FROM properties p
+       WHERE p.code = $1
+       LIMIT 1`,
+      [propertyCode]
+    );
 
-  return result.rows[0];
+    const property = propertyResult.rows[0];
+    if (!property?.id) {
+      const error = new Error("Property not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    let targetCompanyId = property.management_company_id;
+    const requestedCompanyCode = String(options.targetCompanyId || "").trim().toUpperCase();
+
+    if (requestedCompanyCode) {
+      const companyResult = await client.query(
+        `SELECT id FROM management_companies WHERE code = $1 LIMIT 1`,
+        [requestedCompanyCode]
+      );
+
+      if (!companyResult.rows[0]?.id) {
+        const error = new Error("Target company not found");
+        error.statusCode = 404;
+        throw error;
+      }
+
+      targetCompanyId = companyResult.rows[0].id;
+    }
+
+    const unitResult = await client.query(
+      `SELECT id, code FROM units WHERE property_id = $1 ORDER BY code`,
+      [property.id]
+    );
+    const unitIds = unitResult.rows.map((row) => row.id);
+    const unitCodes = unitResult.rows.map((row) => row.code);
+
+    const clientResult = await client.query(
+      `SELECT DISTINCT c.id
+       FROM clients c
+       INNER JOIN ownerships o ON o.client_id = c.id
+       INNER JOIN units u ON u.id = o.unit_id
+       WHERE u.property_id = $1`,
+      [property.id]
+    );
+    const clientIds = clientResult.rows.map((row) => row.id);
+
+    const result = await client.query(
+      `UPDATE properties
+       SET status = 'active',
+           management_company_id = $2,
+           manager_staff_id = NULL,
+           updated_at = NOW()
+       WHERE code = $1
+       RETURNING id, code`,
+      [propertyCode, targetCompanyId]
+    );
+
+    if (clientIds.length) {
+      await client.query(
+        `UPDATE clients
+         SET management_company_id = $2,
+             updated_at = NOW()
+         WHERE id = ANY($1::uuid[])`,
+        [clientIds, targetCompanyId]
+      );
+    }
+
+    if (unitIds.length) {
+      await client.query(
+        `UPDATE requests
+         SET management_company_id = $2,
+             updated_at = NOW()
+         WHERE unit_id = ANY($1::uuid[])`,
+        [unitIds, targetCompanyId]
+      );
+
+      await client.query(
+        `UPDATE documents
+         SET management_company_id = $2,
+             updated_at = NOW()
+         WHERE property_id = $1 OR unit_id = ANY($3::uuid[])`,
+        [property.id, targetCompanyId, unitIds]
+      );
+    } else {
+      await client.query(
+        `UPDATE documents
+         SET management_company_id = $2,
+             updated_at = NOW()
+         WHERE property_id = $1`,
+        [property.id, targetCompanyId]
+      );
+    }
+
+    if (unitCodes.length) {
+      await client.query(
+        `UPDATE activity_logs
+         SET management_company_id = $2
+         WHERE (entity_type = 'property' AND entity_id = $1)
+            OR (entity_type = 'unit' AND entity_id = ANY($3::text[]))`,
+        [propertyCode, targetCompanyId, unitCodes]
+      );
+    } else {
+      await client.query(
+        `UPDATE activity_logs
+         SET management_company_id = $2
+         WHERE entity_type = 'property' AND entity_id = $1`,
+        [propertyCode, targetCompanyId]
+      );
+    }
+
+    return result.rows[0];
+  });
 }
 
 export async function updateUnitProfile(unitCode, payload) {

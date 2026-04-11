@@ -4,15 +4,23 @@ import {
   listCompanies,
   updateCompany,
 } from "../repositories/companyRepository.js";
+import {
+  assertCompanyManageAccess,
+  assertCompanyReadAccess,
+} from "../auth/requestAccess.js";
 
 export async function companyRoutes(fastify) {
-  fastify.get("/api/companies", async () => {
+  fastify.get("/api/companies", async (request) => {
+    assertCompanyReadAccess(request);
+
     return {
       items: await listCompanies(),
     };
   });
 
   fastify.post("/api/companies", async (request, reply) => {
+    assertCompanyManageAccess(request);
+
     const body = request.body || {};
 
     if (!body.companyId) {
@@ -23,6 +31,7 @@ export async function companyRoutes(fastify) {
     const item = await createCompany({
       companyId: body.companyId,
       title: body.title,
+      directorName: body.directorName,
       telegramId: body.telegramId,
       telegramUsername: body.telegramUsername,
       status: body.status,
@@ -33,6 +42,8 @@ export async function companyRoutes(fastify) {
   });
 
   fastify.put("/api/companies/:companyId", async (request, reply) => {
+    assertCompanyManageAccess(request);
+
     const body = request.body || {};
 
     if (!body.title) {
@@ -43,6 +54,7 @@ export async function companyRoutes(fastify) {
     return {
       item: await updateCompany(request.params.companyId, {
         title: body.title,
+        directorName: body.directorName,
         telegramId: body.telegramId,
         telegramUsername: body.telegramUsername,
         status: body.status,
@@ -51,6 +63,8 @@ export async function companyRoutes(fastify) {
   });
 
   fastify.delete("/api/companies/:companyId", async (request) => {
+    assertCompanyManageAccess(request);
+
     return {
       item: await deleteCompany(request.params.companyId),
     };

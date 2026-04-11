@@ -60,11 +60,28 @@
         </div>
 
         <div id="company-dashboard-panel" class="panel">
-          <div class="panel-head">
-            <h2>Кабинет компании</h2>
-            <p id="company-dashboard-copy" class="muted-copy"></p>
+          <div class="company-dashboard-layout">
+            <div class="company-dashboard-main">
+              <div class="panel-head">
+                <h2>Кабинет компании</h2>
+                <p id="company-dashboard-copy" class="muted-copy"></p>
+              </div>
+              <div id="company-dashboard-grid" class="dashboard-grid"></div>
+            </div>
+            <aside class="company-dashboard-side">
+              <div class="company-menu-card">
+                <p class="eyebrow">Меню</p>
+                <div id="company-side-menu" class="company-side-menu">
+                  <button type="button" class="company-side-button is-active">Главное</button>
+                  <button type="button" class="company-side-button">Менеджеры</button>
+                  <button type="button" class="company-side-button">Объекты</button>
+                  <button type="button" class="company-side-button">Клиенты</button>
+                  <button type="button" class="company-side-button">Платежи</button>
+                  <button type="button" class="company-side-button">Заявки</button>
+                </div>
+              </div>
+            </aside>
           </div>
-          <div id="company-dashboard-grid" class="dashboard-grid"></div>
         </div>
       </section>
     </main>

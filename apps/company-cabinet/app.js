@@ -1,3 +1,5 @@
+import { getRoleLabel } from "./src/accessModel.js";
+
 function resolveApiBaseUrl() {
   const { protocol, hostname } = window.location;
 
@@ -64,7 +66,9 @@ async function fetchJson(path, options = {}) {
 }
 
 function renderDashboard(session) {
-  dashboardCopy.textContent = `${session.company.name} • роль ${session.role}`;
+  const roleLabel = session.roleLabel || getRoleLabel(session.role);
+
+  dashboardCopy.textContent = `${session.company.name} • ${roleLabel}`;
   dashboardGrid.innerHTML = `
     <article class="metric-card">
       <span>Компания</span>
@@ -75,12 +79,12 @@ function renderDashboard(session) {
       <strong>${session.company.code}</strong>
     </article>
     <article class="metric-card">
-      <span>Статус</span>
-      <strong class="status-ok">${session.company.status}</strong>
+      <span>Роль</span>
+      <strong>${roleLabel}</strong>
     </article>
     <article class="metric-card">
-      <span>Дальше</span>
-      <strong>Сотрудники, объекты и заявки</strong>
+      <span>Статус</span>
+      <strong class="status-ok">${session.company.status}</strong>
     </article>
   `;
 }

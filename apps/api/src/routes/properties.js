@@ -9,6 +9,12 @@ import {
   updateUnitProfile,
   updateUnitOwners,
 } from "../repositories/propertiesRepository.js";
+import {
+  assertPropertyCreateAccess,
+  assertPropertyListAccess,
+  assertPropertyManageAccess,
+  assertPropertyReadAccess,
+} from "../auth/requestAccess.js";
 
 function nextPropertyCode(properties) {
   const maxValue = properties.reduce((max, property) => {
@@ -19,14 +25,34 @@ function nextPropertyCode(properties) {
   return `OBJ-${String(maxValue + 1).padStart(3, "0")}`;
 }
 
+function propertyCodeFromUnitCode(unitCode) {
+  const normalized = String(unitCode || "").trim();
+  const markerIndex = normalized.indexOf("-U");
+  return markerIndex >= 0 ? normalized.slice(0, markerIndex) : normalized;
+}
+
+async function getManagedPropertyByUnitCode(unitCode) {
+  return getPropertyByCode(propertyCodeFromUnitCode(unitCode));
+}
+
+function scopePropertiesForAccess(properties, access) {
+  if (access.role === "manager") {
+    return properties.filter((property) => property.manager === access.userName);
+  }
+
+  return properties;
+}
+
 export async function propertyRoutes(fastify) {
   fastify.get("/api/properties", async (request) => {
+    const access = assertPropertyListAccess(request);
     const properties = await listProperties({
       includeArchived:
         request.query?.includeArchived === "1" ||
         request.query?.includeArchived === "true",
     });
-    return { items: properties };
+
+    return { items: scopePropertiesForAccess(properties, access) };
   });
 
   fastify.get("/api/properties/:propertyCode", async (request, reply) => {
@@ -37,10 +63,13 @@ export async function propertyRoutes(fastify) {
       return { message: "Property not found" };
     }
 
+    assertPropertyReadAccess(request, property);
     return { item: property };
   });
 
   fastify.post("/api/properties", async (request, reply) => {
+    assertPropertyCreateAccess(request);
+
     const body = request.body || {};
     const currentProperties = await listProperties();
 
@@ -74,13 +103,31 @@ export async function propertyRoutes(fastify) {
       return { message: "owners array is required" };
     }
 
-    const property = await updateUnitOwners(request.params.unitCode, body.owners);
-    return { item: property };
+    const property = await getManagedPropertyByUnitCode(request.params.unitCode);
+
+    if (!property) {
+      reply.code(404);
+      return { message: "Property not found" };
+    }
+
+    assertPropertyManageAccess(request, property);
+
+    const updatedProperty = await updateUnitOwners(request.params.unitCode, body.owners);
+    return { item: updatedProperty };
   });
 
-  fastify.put("/api/units/:unitCode/profile", async (request) => {
+  fastify.put("/api/units/:unitCode/profile", async (request, reply) => {
+    const property = await getManagedPropertyByUnitCode(request.params.unitCode);
+
+    if (!property) {
+      reply.code(404);
+      return { message: "Property not found" };
+    }
+
+    assertPropertyManageAccess(request, property);
+
     const body = request.body || {};
-    const property = await updateUnitProfile(request.params.unitCode, {
+    const updatedProperty = await updateUnitProfile(request.params.unitCode, {
       floor: body.floor,
       area: body.area,
       layoutType: body.layoutType,
@@ -88,18 +135,27 @@ export async function propertyRoutes(fastify) {
       waterAccountNumber: body.waterAccountNumber,
       electricityAccountNumber: body.electricityAccountNumber,
     });
-    return { item: property };
+    return { item: updatedProperty };
   });
 
-  fastify.put("/api/properties/:propertyCode/finance", async (request) => {
+  fastify.put("/api/properties/:propertyCode/finance", async (request, reply) => {
+    const property = await getPropertyByCode(request.params.propertyCode);
+
+    if (!property) {
+      reply.code(404);
+      return { message: "Property not found" };
+    }
+
+    assertPropertyManageAccess(request, property);
+
     const body = request.body || {};
-    const property = await updatePropertyFinance(request.params.propertyCode, {
+    const updatedProperty = await updatePropertyFinance(request.params.propertyCode, {
       aidatCalculationMode: body.aidatCalculationMode,
       aidatStartDate: body.aidatStartDate,
       aidatFixedAmount: body.aidatFixedAmount,
       aidatCurrencyCode: body.aidatCurrencyCode,
     });
-    return { item: property };
+    return { item: updatedProperty };
   });
 
   fastify.post("/api/units/:unitCode/aidat-payment", async (request, reply) => {
@@ -110,23 +166,58 @@ export async function propertyRoutes(fastify) {
       return { message: "amount and receivedDate are required" };
     }
 
-    const property = await addAidatPayment(request.params.unitCode, {
+    const property = await getManagedPropertyByUnitCode(request.params.unitCode);
+
+    if (!property) {
+      reply.code(404);
+      return { message: "Property not found" };
+    }
+
+    assertPropertyManageAccess(request, property);
+
+    const updatedProperty = await addAidatPayment(request.params.unitCode, {
       amount: body.amount,
       currency: body.currency,
       receivedDate: body.receivedDate,
     });
-    return { item: property };
+    return { item: updatedProperty };
   });
 
-  fastify.patch("/api/properties/:propertyCode/archive", async (request) => {
+  fastify.patch("/api/properties/:propertyCode/archive", async (request, reply) => {
+    const property = await getPropertyByCode(request.params.propertyCode);
+
+    if (!property) {
+      reply.code(404);
+      return { message: "Property not found" };
+    }
+
+    assertPropertyManageAccess(request, property);
+
     const archived = await archiveProperty(request.params.propertyCode);
     return {
       item: await getPropertyByCode(archived.code),
     };
   });
 
-  fastify.patch("/api/properties/:propertyCode/restore", async (request) => {
-    const restored = await restoreProperty(request.params.propertyCode);
+  fastify.patch("/api/properties/:propertyCode/restore", async (request, reply) => {
+    const property = await getPropertyByCode(request.params.propertyCode);
+
+    if (!property) {
+      reply.code(404);
+      return { message: "Property not found" };
+    }
+
+    const access = assertPropertyManageAccess(request, property);
+    const body = request.body || {};
+
+    if (body.targetCompanyId && access.role !== "project_owner") {
+      reply.code(403);
+      return { message: "Only the platform creator can restore a house to another company" };
+    }
+
+    const restored = await restoreProperty(request.params.propertyCode, {
+      targetCompanyId: body.targetCompanyId,
+    });
     return {
       item: await getPropertyByCode(restored.code),
     };

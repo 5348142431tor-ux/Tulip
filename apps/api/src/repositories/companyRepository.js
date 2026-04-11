@@ -19,6 +19,7 @@ function mapCompanyRow(row) {
     id: row.id,
     companyId: row.code,
     title: row.name,
+    directorName: row.director_name || "",
     status: row.status || "invited",
     telegramId: row.telegram_id || "",
     telegramUsername: row.telegram_username || "",
@@ -48,6 +49,7 @@ export async function createCompany(payload) {
   const result = await query(INSERT_COMPANY_SQL, [
     companyId,
     title,
+    payload.directorName ? String(payload.directorName).trim() : null,
     payload.status || "invited",
     payload.telegramId ? String(payload.telegramId).trim() : null,
     payload.telegramUsername ? String(payload.telegramUsername).trim() : null,
@@ -65,6 +67,7 @@ export async function updateCompany(companyId, payload) {
   const result = await query(UPDATE_COMPANY_SQL, [
     nextCompanyId,
     title,
+    payload.directorName ? String(payload.directorName).trim() : null,
     payload.status || "active",
     payload.telegramId ? String(payload.telegramId).trim() : null,
     payload.telegramUsername ? String(payload.telegramUsername).trim() : null,

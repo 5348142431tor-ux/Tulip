@@ -2,6 +2,8 @@ export const LIST_PROPERTIES_SQL = `
   SELECT
     p.id,
     p.code,
+    mc.code AS management_company_code,
+    mc.name AS management_company_name,
     p.title,
     p.city,
     p.district,
@@ -35,9 +37,10 @@ export const LIST_PROPERTIES_SQL = `
       '[]'::json
     ) AS total_balances
   FROM properties p
+  INNER JOIN management_companies mc ON mc.id = p.management_company_id
   LEFT JOIN staff s ON s.id = p.manager_staff_id
   WHERE ($1::boolean = TRUE OR p.status <> 'archived')
-  GROUP BY p.id, s.full_name
+  GROUP BY p.id, mc.code, mc.name, s.full_name
   ORDER BY p.code;
 `;
 
@@ -45,6 +48,8 @@ export const PROPERTY_DETAIL_SQL = `
   SELECT
     p.id AS property_id,
     p.code AS property_code,
+    mc.code AS management_company_code,
+    mc.name AS management_company_name,
     p.title AS property_title,
     p.city,
     p.district,
@@ -76,6 +81,7 @@ export const PROPERTY_DETAIL_SQL = `
     c.phone AS client_phone,
     c.telegram_id AS client_telegram_id
   FROM properties p
+  INNER JOIN management_companies mc ON mc.id = p.management_company_id
   LEFT JOIN staff s ON s.id = p.manager_staff_id
   LEFT JOIN units u ON u.property_id = p.id
   LEFT JOIN ownerships o ON o.unit_id = u.id

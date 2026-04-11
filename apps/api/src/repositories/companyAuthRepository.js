@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { query, withTransaction } from "../db.js";
+import { buildCompanyDescriptor, buildRoleDescriptor } from "../auth/accessModel.js";
 import { hashPassword, verifyPassword } from "../auth/companyPassword.js";
 import {
   FIND_COMPANY_ACCESS_BY_CODE_SQL,
@@ -18,19 +19,31 @@ function buildCabinetPath(accessCode) {
   return `/?accessCode=${accessCode}`;
 }
 
+function mapCompany(row) {
+  return buildCompanyDescriptor({
+    id: row.management_company_id,
+    code: row.management_company_code,
+    name: row.management_company_name,
+    telegramId: row.telegram_id || "",
+    telegramUsername: row.telegram_username || "",
+    status: row.management_company_status || "active",
+  });
+}
+
 function mapCompanySession(row, accessCode) {
+  const roleInfo = buildRoleDescriptor("company_admin", {
+    scope: "company",
+    actorType: "company",
+  });
+
   return {
+    actorType: "company",
     accessCode,
-    role: "company_admin",
+    role: roleInfo.code,
+    roleLabel: roleInfo.label,
+    roleInfo,
     mustChangePassword: Boolean(row.must_change_password),
-    company: {
-      id: row.management_company_id,
-      code: row.management_company_code,
-      name: row.management_company_name,
-      telegramId: row.telegram_id || "",
-      telegramUsername: row.telegram_username || "",
-      status: row.management_company_status || "active",
-    },
+    company: mapCompany(row),
   };
 }
 
@@ -97,16 +110,19 @@ export async function resolveTelegramCompanyAccess({ telegramId, telegramUsernam
     }
 
     const accessCode = await ensureCompanyAccessLink(client, row);
+    const roleInfo = buildRoleDescriptor("company_admin", {
+      scope: "company",
+      actorType: "company",
+    });
 
     return {
+      actorType: "company",
       accessCode,
       cabinetPath: buildCabinetPath(accessCode),
-      company: {
-        id: row.management_company_id,
-        code: row.management_company_code,
-        name: row.management_company_name,
-      },
-      role: "company_admin",
+      company: mapCompany(row),
+      role: roleInfo.code,
+      roleLabel: roleInfo.label,
+      roleInfo,
       mustChangePassword: Boolean(row.must_change_password),
     };
   });

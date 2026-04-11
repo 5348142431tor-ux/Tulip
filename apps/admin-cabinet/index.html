@@ -21,11 +21,13 @@
           <button class="side-link is-active" data-view="dashboard" data-ui-id="nav-main">
             Главное
           </button>
-          <button class="side-link" data-view="admin-panel" data-ui-id="nav-admin-panel">Админ панель</button>
-          <button class="side-link" data-view="requests" data-ui-id="nav-requests">Заявки</button>
-          <button class="side-link" data-view="clients" data-ui-id="nav-clients">Клиенты</button>
+          <button class="side-link" data-view="managers" data-ui-id="nav-managers">Менеджеры</button>
+          <button class="side-link" data-view="admin-panel" data-ui-id="nav-admin-panel">Архив домов</button>
+          <button class="side-link" data-view="company-clients" data-ui-id="nav-company-clients">Компании</button>
           <button class="side-link" data-view="properties" data-ui-id="nav-properties">Объекты</button>
+          <button class="side-link" data-view="clients" data-ui-id="nav-clients">Клиенты</button>
           <button class="side-link" data-view="payments" data-ui-id="nav-payments">Платежи</button>
+          <button class="side-link" data-view="requests" data-ui-id="nav-requests">Заявки</button>
           <button class="side-link" data-view="documents" data-ui-id="nav-documents">Документы</button>
         </nav>
 
@@ -123,13 +125,24 @@
               </div>
             </section>
 
+            <section class="view-panel" data-panel="managers" data-ui-id="view-managers">
+              <div class="section-head" data-ui-id="head-managers">
+                <div>
+                  <p class="eyebrow">Managers</p>
+                  <h3>Менеджеры</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-managers-status">Company team</div>
+              </div>
+              <div id="managers-grid" class="entity-grid" data-ui-id="grid-managers"></div>
+            </section>
+
             <section class="view-panel" data-panel="admin-panel" data-ui-id="view-admin-panel">
               <div class="section-head" data-ui-id="head-admin-panel">
                 <div>
-                  <p class="eyebrow">Platform Admin</p>
-                  <h3>Админ панель</h3>
+                  <p class="eyebrow">House Archive</p>
+                  <h3>Архив домов</h3>
                 </div>
-                <div class="status-pill" data-ui-id="pill-admin-panel-status">Creator access</div>
+                <div class="status-pill" data-ui-id="pill-admin-panel-status">House archive</div>
               </div>
               <div id="admin-panel-grid" class="entity-grid" data-ui-id="grid-admin-panel"></div>
             </section>
@@ -292,8 +305,6 @@
             <span>Ответственный менеджер</span>
             <select name="manager" required>
               <option value="Kemal Yilmaz">Kemal Yilmaz</option>
-              <option value="Irina Volkova">Irina Volkova</option>
-              <option value="Murat Demir">Murat Demir</option>
             </select>
           </label>
 
@@ -357,17 +368,26 @@
         <div class="modal-head" data-ui-id="head-auth">
           <div>
             <p class="eyebrow">Access</p>
-            <h3>Вход по роли</h3>
+            <h3 id="auth-title">Вход в кабинет</h3>
           </div>
         </div>
         <form id="auth-form" class="form-grid" data-ui-id="form-auth">
-          <label class="field field-full" data-ui-id="field-auth-user">
-            <span>Выберите пользователя</span>
+          <label id="auth-login-field" class="field field-full" data-ui-id="field-auth-login">
+            <span>Логин</span>
+            <input id="auth-login-input" name="login" type="text" autocomplete="username" placeholder="owner или ST-01" />
+          </label>
+          <label id="auth-password-field" class="field field-full" data-ui-id="field-auth-password">
+            <span>Пароль</span>
+            <input id="auth-password-input" name="password" type="password" autocomplete="current-password" placeholder="Введите пароль" />
+          </label>
+          <label id="auth-impersonation-field" class="field field-full" data-ui-id="field-auth-user" hidden>
+            <span>Открыть кабинет как</span>
             <select id="auth-user-select" name="userId" size="10"></select>
           </label>
           <div class="modal-actions field-full" data-ui-id="actions-auth">
             <div id="auth-message" class="form-message" data-ui-id="message-auth"></div>
-            <button type="submit" class="primary-button" data-ui-id="btn-submit-auth">Войти</button>
+            <button type="button" id="auth-restore-button" class="ghost-button" hidden>Вернуться к создателю</button>
+            <button type="submit" id="auth-submit-button" class="primary-button" data-ui-id="btn-submit-auth">Войти</button>
           </div>
         </form>
       </div>
@@ -422,6 +442,6 @@
       </div>
     </div>
 
-    <script src="./app.js"></script>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

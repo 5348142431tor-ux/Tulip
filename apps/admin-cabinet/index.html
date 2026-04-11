@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tulip Admin Cabinet</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="admin-shell" data-ui-id="layout-admin-shell">
+      <aside class="admin-sidebar" data-ui-id="sidebar-admin">
+        <div class="brand-card" data-ui-id="card-brand">
+          <p class="eyebrow">Tulip Ops</p>
+          <h1>Кабинет управляющей компании</h1>
+          <p>
+            Единое рабочее место для менеджеров, поддержки и бухгалтерии.
+          </p>
+        </div>
+
+        <nav class="side-nav" aria-label="Навигация по кабинету" data-ui-id="nav-side-main">
+          <button class="side-link is-active" data-view="dashboard" data-ui-id="nav-main">
+            Главное
+          </button>
+          <button class="side-link" data-view="admin-panel" data-ui-id="nav-admin-panel">Админ панель</button>
+          <button class="side-link" data-view="requests" data-ui-id="nav-requests">Заявки</button>
+          <button class="side-link" data-view="clients" data-ui-id="nav-clients">Клиенты</button>
+          <button class="side-link" data-view="properties" data-ui-id="nav-properties">Объекты</button>
+          <button class="side-link" data-view="payments" data-ui-id="nav-payments">Платежи</button>
+          <button class="side-link" data-view="documents" data-ui-id="nav-documents">Документы</button>
+        </nav>
+
+        <section class="sidebar-box" data-ui-id="box-work-model">
+          <p class="eyebrow">Рабочая модель</p>
+          <ul>
+            <li>Все сценарии идут через backend</li>
+            <li>PostgreSQL является основным хранилищем</li>
+            <li>Менеджеры работают в одном интерфейсе</li>
+          </ul>
+        </section>
+
+        <section class="sidebar-box" data-ui-id="box-readiness-legend">
+          <p class="eyebrow">Статусы готовности</p>
+          <div class="legend-list">
+            <div class="legend-item">
+              <span class="legend-dot status-ready"></span>
+              <span>Настроено</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot status-progress"></span>
+              <span>Частично готово</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-dot status-todo"></span>
+              <span>Не сделано</span>
+            </div>
+          </div>
+        </section>
+      </aside>
+
+      <main class="admin-main" data-ui-id="main-admin">
+        <header class="topbar" data-ui-id="topbar-main">
+          <div>
+            <p class="eyebrow">Operations Desk</p>
+            <h2 id="view-title">Главное</h2>
+          </div>
+          <div class="topbar-actions">
+            <input id="global-search" type="search" placeholder="Поиск по клиентам, объектам, заявкам" data-ui-id="input-global-search" />
+            <div id="storage-status-badge" class="status-pill" data-ui-id="badge-storage-status"></div>
+            <div id="current-user-badge" class="status-pill" data-ui-id="badge-current-user"></div>
+            <button id="refresh-button" class="ghost-button" data-ui-id="btn-refresh">Обновить</button>
+            <button id="new-request-button" class="primary-button" data-ui-id="btn-new-request">Новая заявка</button>
+            <button id="switch-user-button" class="ghost-button" data-ui-id="btn-switch-user">Сменить роль</button>
+          </div>
+        </header>
+
+        <section class="summary-strip" id="summary-strip" data-ui-id="strip-summary"></section>
+
+        <section class="workspace-grid" data-ui-id="grid-workspace">
+          <div class="workspace-main" data-ui-id="workspace-main">
+            <section class="view-panel is-visible" data-panel="dashboard" data-ui-id="view-main">
+              <div class="section-head" data-ui-id="head-main">
+                <div>
+                  <p class="eyebrow">Overview</p>
+                  <h3>Операционная картина дня</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-main-status">Live sample data</div>
+              </div>
+
+              <div class="dashboard-layout" data-ui-id="layout-main-dashboard">
+                <article class="card hero-metric" id="focus-card" data-ui-id="card-main-focus"></article>
+
+                <article class="card">
+                  <div class="card-head">
+                    <h4>Заявки по статусу</h4>
+                    <span>Сегодня</span>
+                  </div>
+                  <div id="request-status-grid" class="metric-grid"></div>
+                </article>
+
+                <article class="card wide-card">
+                  <div class="card-head">
+                    <h4>Приоритетная очередь</h4>
+                    <span>Нужно внимание</span>
+                  </div>
+                  <div id="priority-requests" class="ticket-list"></div>
+                </article>
+
+                <article class="card">
+                  <div class="card-head">
+                    <h4>Платежная дисциплина</h4>
+                    <span>Текущий период</span>
+                  </div>
+                  <div id="payment-health" class="stack-metrics"></div>
+                </article>
+
+                <article class="card">
+                  <div class="card-head">
+                    <h4>Менеджеры</h4>
+                    <span>Нагрузка</span>
+                  </div>
+                  <div id="staff-load" class="list-grid"></div>
+                </article>
+              </div>
+            </section>
+
+            <section class="view-panel" data-panel="admin-panel" data-ui-id="view-admin-panel">
+              <div class="section-head" data-ui-id="head-admin-panel">
+                <div>
+                  <p class="eyebrow">Platform Admin</p>
+                  <h3>Админ панель</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-admin-panel-status">Creator access</div>
+              </div>
+              <div id="admin-panel-grid" class="entity-grid" data-ui-id="grid-admin-panel"></div>
+            </section>
+
+            <section class="view-panel" data-panel="company-clients" data-ui-id="view-company-clients">
+              <div class="section-head" data-ui-id="head-company-clients">
+                <div>
+                  <p class="eyebrow">Companies</p>
+                  <h3>Клиенты (Компании)</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-company-clients-status">Platform setup</div>
+              </div>
+              <div id="company-clients-grid" class="entity-grid" data-ui-id="grid-company-clients"></div>
+            </section>
+
+            <section class="view-panel" data-panel="requests" data-ui-id="view-requests">
+              <div class="section-head" data-ui-id="head-requests">
+                <div>
+                  <p class="eyebrow">Requests</p>
+                  <h3>Заявки клиентов</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-requests-status">Queue management</div>
+              </div>
+              <div class="table-toolbar" data-ui-id="toolbar-requests">
+                <div id="request-filters" class="chip-row" data-ui-id="filters-requests"></div>
+              </div>
+              <div class="card" data-ui-id="card-requests-table">
+                <div id="requests-table" data-ui-id="table-requests"></div>
+              </div>
+            </section>
+
+            <section class="view-panel" data-panel="clients" data-ui-id="view-clients">
+              <div class="section-head" data-ui-id="head-clients">
+                <div>
+                  <p class="eyebrow">Clients</p>
+                  <h3>База клиентов</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-clients-status">CRM layer</div>
+              </div>
+              <div class="entity-grid" id="clients-grid" data-ui-id="grid-clients"></div>
+            </section>
+
+            <section class="view-panel" data-panel="properties" data-ui-id="view-properties">
+              <div class="section-head" data-ui-id="head-properties">
+                <div>
+                  <p class="eyebrow">Properties</p>
+                  <h3>Объекты под управлением</h3>
+                </div>
+                <div class="section-actions">
+                  <div class="status-pill" data-ui-id="pill-properties-status">Portfolio view</div>
+                  <button id="add-property-button" class="primary-button" data-ui-id="btn-add-property">
+                    Добавить объект
+                  </button>
+                </div>
+              </div>
+              <div id="properties-breadcrumbs" class="chip-row properties-breadcrumbs" data-ui-id="breadcrumbs-properties"></div>
+              <div id="properties-overview" class="properties-overview" data-ui-id="overview-properties"></div>
+              <div class="entity-grid" id="properties-grid" data-ui-id="grid-properties"></div>
+            </section>
+
+            <section class="view-panel" data-panel="payments" data-ui-id="view-payments">
+              <div class="section-head" data-ui-id="head-payments">
+                <div>
+                  <p class="eyebrow">Payments</p>
+                  <h3>Начисления и статусы оплат</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-payments-status">Finance control</div>
+              </div>
+              <div class="card" data-ui-id="card-payments-table">
+                <div id="payments-table" data-ui-id="table-payments"></div>
+              </div>
+            </section>
+
+            <section class="view-panel" data-panel="documents" data-ui-id="view-documents">
+              <div class="section-head" data-ui-id="head-documents">
+                <div>
+                  <p class="eyebrow">Documents</p>
+                  <h3>Документы и ссылки на Google Drive</h3>
+                </div>
+                <div class="status-pill" data-ui-id="pill-documents-status">Document registry</div>
+              </div>
+              <div class="entity-grid" id="documents-grid" data-ui-id="grid-documents"></div>
+            </section>
+          </div>
+
+          <aside class="workspace-side" data-ui-id="workspace-side">
+            <article class="card side-card" data-ui-id="card-selected-view">
+              <p class="eyebrow">Selected View</p>
+              <div id="view-description"></div>
+            </article>
+
+            <article class="card side-card" data-ui-id="card-view-readiness">
+              <p class="eyebrow">Готовность экрана</p>
+              <div id="view-readiness"></div>
+            </article>
+
+            <article class="card side-card" data-ui-id="card-integrations">
+              <p class="eyebrow">Интеграции</p>
+              <ul class="plain-list">
+                <li>Telegram-бот создает заявки и уведомления</li>
+                <li>Клиентский кабинет показывает только свои данные</li>
+                <li>Backend валидирует все записи перед PostgreSQL</li>
+              </ul>
+            </article>
+
+            <article class="card side-card accent-card" data-ui-id="card-next-steps">
+              <p class="eyebrow">Дальше</p>
+              <h4>Что можно подключать следующим</h4>
+              <ul class="plain-list">
+                <li>авторизацию сотрудников</li>
+                <li>API-загрузку карточек и таблиц</li>
+                <li>редактирование заявок и платежей</li>
+                <li>историю действий и уведомления</li>
+              </ul>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <div id="property-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-property-create">
+      <div class="modal-card" data-ui-id="card-property-create">
+        <div class="modal-head" data-ui-id="head-property-create">
+          <div>
+            <p class="eyebrow">New Property</p>
+            <h3>Добавить объект</h3>
+          </div>
+          <div class="modal-head-actions">
+            <button type="submit" form="property-form" class="primary-button" data-ui-id="btn-submit-property">Сохранить объект</button>
+            <button id="close-property-modal" class="ghost-button" data-ui-id="btn-close-property-modal">Закрыть</button>
+          </div>
+        </div>
+
+        <form id="property-form" class="form-grid" data-ui-id="form-property-create">
+          <label class="field" data-ui-id="field-property-title">
+            <span>Название объекта</span>
+            <input name="title" type="text" placeholder="Sunset Residence A-14" required />
+          </label>
+
+          <label class="field" data-ui-id="field-property-city">
+            <span>Город</span>
+            <input name="city" type="text" placeholder="Antalya" required />
+          </label>
+
+          <label class="field" data-ui-id="field-property-district">
+            <span>Район</span>
+            <input name="district" type="text" placeholder="Konyaalti" required />
+          </label>
+
+          <label class="field" data-ui-id="field-property-type">
+            <span>Тип объекта</span>
+            <select name="type" required>
+              <option value="residential building">Residential building</option>
+              <option value="villa complex">Villa complex</option>
+              <option value="commercial building">Commercial building</option>
+            </select>
+          </label>
+
+          <label class="field" data-ui-id="field-property-manager">
+            <span>Ответственный менеджер</span>
+            <select name="manager" required>
+              <option value="Kemal Yilmaz">Kemal Yilmaz</option>
+              <option value="Irina Volkova">Irina Volkova</option>
+              <option value="Murat Demir">Murat Demir</option>
+            </select>
+          </label>
+
+          <label class="field" data-ui-id="field-property-unit-count">
+            <span>Количество помещений</span>
+            <input
+              name="unitCount"
+              id="property-unit-count"
+              type="number"
+              min="1"
+              max="200"
+              value="4"
+              required
+            />
+          </label>
+
+          <label class="field field-full" data-ui-id="field-property-status">
+            <span>Статус</span>
+            <select name="status" required>
+              <option value="active">Active</option>
+              <option value="maintenance watch">Maintenance watch</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+
+          <div class="modal-actions field-full" data-ui-id="actions-property-create">
+            <div id="property-form-message" class="form-message" data-ui-id="message-property-form"></div>
+            <button type="button" id="cancel-property-modal" class="ghost-button" data-ui-id="btn-cancel-property-modal">
+              Отмена
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="archive-confirm-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-property-archive-confirm">
+      <div class="modal-card modal-card-compact" data-ui-id="card-property-archive-confirm">
+        <div class="modal-head" data-ui-id="head-property-archive-confirm">
+          <div>
+            <p class="eyebrow">Archive Warning</p>
+            <h3>Подтверждение архивации</h3>
+          </div>
+        </div>
+        <div class="confirm-copy" data-ui-id="copy-property-archive-confirm">
+          <p>Вы пытаетесь удалить этот дом из вашей учетной записи безвозвратно.</p>
+          <p>Если согласны, нажмите Ок. Если нет, тогда Отмена.</p>
+        </div>
+        <div class="modal-actions" data-ui-id="actions-property-archive-confirm">
+          <button type="button" id="cancel-archive-confirm" class="ghost-button" data-ui-id="btn-cancel-property-archive-confirm">
+            Отмена
+          </button>
+          <button type="button" id="confirm-archive-button" class="primary-button" data-ui-id="btn-confirm-property-archive">
+            Ок
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="auth-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-auth">
+      <div class="modal-card modal-card-compact" data-ui-id="card-auth">
+        <div class="modal-head" data-ui-id="head-auth">
+          <div>
+            <p class="eyebrow">Access</p>
+            <h3>Вход по роли</h3>
+          </div>
+        </div>
+        <form id="auth-form" class="form-grid" data-ui-id="form-auth">
+          <label class="field field-full" data-ui-id="field-auth-user">
+            <span>Выберите пользователя</span>
+            <select id="auth-user-select" name="userId" size="10"></select>
+          </label>
+          <div class="modal-actions field-full" data-ui-id="actions-auth">
+            <div id="auth-message" class="form-message" data-ui-id="message-auth"></div>
+            <button type="submit" class="primary-button" data-ui-id="btn-submit-auth">Войти</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="aidat-payment-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-aidat-payment">
+      <div class="modal-card modal-card-compact" data-ui-id="card-aidat-payment">
+        <div class="modal-head" data-ui-id="head-aidat-payment">
+          <div>
+            <p class="eyebrow">Aidat Payment</p>
+            <h3>Добавить оплату айдата</h3>
+          </div>
+          <div class="modal-head-actions">
+            <button id="close-aidat-payment-modal" class="ghost-button" data-ui-id="btn-close-aidat-payment-modal">Закрыть</button>
+          </div>
+        </div>
+        <form id="aidat-payment-form" class="form-grid" data-ui-id="form-aidat-payment">
+          <label class="field field-full" data-ui-id="field-aidat-payment-unit">
+            <span>Квартира</span>
+            <input id="aidat-payment-unit-label" type="text" readonly />
+          </label>
+          <label class="field" data-ui-id="field-aidat-payment-amount">
+            <span>Сумма оплаты</span>
+            <input name="amount" type="number" step="0.01" min="0" placeholder="Введите сумму" required />
+          </label>
+          <label class="field" data-ui-id="field-aidat-payment-currency">
+            <span>Валюта оплаты</span>
+            <select name="currency" id="aidat-payment-currency">
+              <option value="TRY">Лира</option>
+              <option value="EUR">Евро</option>
+              <option value="USD">Доллар</option>
+            </select>
+          </label>
+          <label class="field" data-ui-id="field-aidat-payment-received-date">
+            <span>Дата поступления</span>
+            <input name="receivedDate" type="date" required />
+          </label>
+          <label class="field" data-ui-id="field-aidat-payment-recorded-at">
+            <span>Дата внесения</span>
+            <input id="aidat-payment-recorded-at" type="text" readonly />
+          </label>
+          <div class="modal-actions field-full" data-ui-id="actions-aidat-payment">
+            <div id="aidat-payment-message" class="form-message" data-ui-id="message-aidat-payment"></div>
+            <button type="button" id="cancel-aidat-payment-modal" class="ghost-button" data-ui-id="btn-cancel-aidat-payment-modal">
+              Отмена
+            </button>
+            <button type="submit" class="primary-button" data-ui-id="btn-submit-aidat-payment">
+              Сохранить оплату
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

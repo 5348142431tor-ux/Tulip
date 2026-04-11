@@ -1,0 +1,19 @@
+{
+  "name": "tulip",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Property management platform for a Turkish management company with Telegram bot, client cabinet, admin cabinet, and PostgreSQL storage.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo \"Use workspace-specific scripts\"",
+    "api:dev": "npm run dev --workspace @tulip/api",
+    "api:start": "npm run start --workspace @tulip/api",
+    "bot:dev": "npm run dev --workspace @tulip/bot",
+    "bot:start": "npm run start --workspace @tulip/bot",
+    "build": "echo \"Define build scripts after implementation\"",
+    "test": "echo \"Tests will be added with implementation\""
+  }
+}

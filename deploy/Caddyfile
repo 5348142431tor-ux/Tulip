@@ -1,0 +1,17 @@
+{
+  email {$LETSENCRYPT_EMAIL}
+}
+
+api.{$BASE_DOMAIN} {
+  reverse_proxy api:3000
+}
+
+admin.{$BASE_DOMAIN} {
+  root * /srv/admin-cabinet
+  file_server
+}
+
+company.{$BASE_DOMAIN} {
+  root * /srv/company-cabinet
+  file_server
+}

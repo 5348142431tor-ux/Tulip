@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tulip Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-block">
+          <p class="eyebrow">Tulip</p>
+          <h1>Управление объектами через Telegram и кабинеты</h1>
+          <p class="lead">
+            Визуальный каркас MVP для управляющей компании в Турции.
+          </p>
+        </div>
+
+        <nav class="nav-list" aria-label="Главная навигация">
+          <button class="nav-item is-active" data-screen="overview">
+            Обзор платформы
+          </button>
+          <button class="nav-item" data-screen="client">
+            Кабинет клиента
+          </button>
+          <button class="nav-item" data-screen="bot">
+            Telegram-бот
+          </button>
+          <button class="nav-item" data-screen="admin">
+            Кабинет УК
+          </button>
+          <button class="nav-item" data-screen="data">
+            PostgreSQL
+          </button>
+        </nav>
+
+        <section class="sidebar-panel">
+          <p class="sidebar-title">MVP-фокус</p>
+          <ul class="mini-list">
+            <li>Авторизация через Telegram</li>
+            <li>Объекты, заявки, платежи</li>
+            <li>Рабочее место менеджера</li>
+            <li>PostgreSQL как основная база</li>
+          </ul>
+        </section>
+      </aside>
+
+      <main class="main-content">
+        <section class="hero-card">
+          <div>
+            <p class="eyebrow">Product Vision</p>
+            <h2 id="screen-title">Обзор платформы</h2>
+            <p id="screen-description" class="hero-text">
+              Система объединяет Telegram, клиентский кабинет и кабинет
+              управляющей компании через единый backend и PostgreSQL.
+            </p>
+          </div>
+
+          <div class="hero-stats">
+            <article>
+              <span>3</span>
+              <p>Роли</p>
+            </article>
+            <article>
+              <span>4</span>
+              <p>Основных модуля MVP</p>
+            </article>
+            <article>
+              <span>1</span>
+              <p>Источник операционных данных</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="content-grid">
+          <div class="canvas-area" id="screen-host">
+            <section class="screen-panel is-visible" data-panel="overview">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Journey</p>
+                  <h3>Как продукт работает целиком</h3>
+                </div>
+                <div class="pill-row">
+                  <span class="pill">Client</span>
+                  <span class="pill">Operations</span>
+                  <span class="pill">Data</span>
+                </div>
+              </div>
+
+              <div class="flow-map">
+                <article class="flow-node accent-a">
+                  <p>Telegram Bot</p>
+                  <strong>Быстрые действия</strong>
+                  <span>Старт, заявки, уведомления</span>
+                </article>
+                <article class="flow-node accent-b">
+                  <p>Client Cabinet</p>
+                  <strong>Личный кабинет</strong>
+                  <span>Платежи, документы, объекты</span>
+                </article>
+                <article class="flow-node accent-c">
+                  <p>Backend API</p>
+                  <strong>Бизнес-логика</strong>
+                  <span>Auth, requests, payments</span>
+                </article>
+                <article class="flow-node accent-d">
+                  <p>Admin Cabinet</p>
+                  <strong>Рабочее место УК</strong>
+                  <span>Клиенты, задачи, финансы</span>
+                </article>
+                <article class="flow-node accent-e">
+                  <p>PostgreSQL</p>
+                  <strong>Основная база</strong>
+                  <span>Properties, units, debts, requests</span>
+                </article>
+              </div>
+
+              <div class="dual-column">
+                <article class="info-card">
+                  <p class="eyebrow">Core Modules</p>
+                  <h4>Что войдет в первую версию</h4>
+                  <ul class="feature-list">
+                    <li>Авторизация по Telegram ID</li>
+                    <li>Карточка объекта клиента</li>
+                    <li>История платежей и задолженности</li>
+                    <li>Заявки: создание, статус, исполнитель</li>
+                    <li>Документы со ссылками на Google Drive</li>
+                  </ul>
+                </article>
+
+                <article class="info-card dark-card">
+                  <p class="eyebrow">Operating Model</p>
+                  <h4>Почему это удобно УК</h4>
+                  <ul class="feature-list">
+                    <li>Менеджеры ведут все в одной системе</li>
+                    <li>PostgreSQL дает надежное хранение данных</li>
+                    <li>Клиент видит только свои данные</li>
+                    <li>Telegram снижает нагрузку на поддержку</li>
+                  </ul>
+                </article>
+              </div>
+            </section>
+
+            <section class="screen-panel" data-panel="client">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Client Area</p>
+                  <h3>Кабинет клиента</h3>
+                </div>
+                <div class="status-chip">Owner profile</div>
+              </div>
+
+              <div class="dashboard-grid">
+                <article class="panel-card tall-card">
+                  <div class="panel-head">
+                    <h4>Мои объекты</h4>
+                    <span>2 active</span>
+                  </div>
+                  <div class="property-card">
+                    <strong>Sunset Residence A-12</strong>
+                    <p>Antalya, Konyaalti</p>
+                    <small>Владелец, обслуживание активно</small>
+                  </div>
+                  <div class="property-card">
+                    <strong>Olive Garden Villa 4</strong>
+                    <p>Bodrum, Yalikavak</p>
+                    <small>Сезонная аренда, документы обновлены</small>
+                  </div>
+                </article>
+
+                <article class="panel-card">
+                  <div class="panel-head">
+                    <h4>Баланс</h4>
+                    <span>TRY</span>
+                  </div>
+                  <div class="money-block">
+                    <strong>18,400 TRY</strong>
+                    <p>Текущий месяц к оплате</p>
+                  </div>
+                  <ul class="compact-list">
+                    <li>Обслуживание: 8,200 TRY</li>
+                    <li>Коммунальные: 6,100 TRY</li>
+                    <li>Доп. сервис: 4,100 TRY</li>
+                  </ul>
+                </article>
+
+                <article class="panel-card">
+                  <div class="panel-head">
+                    <h4>Заявки</h4>
+                    <span>1 in progress</span>
+                  </div>
+                  <ul class="timeline-list">
+                    <li>
+                      <strong>Проверка кондиционера</strong>
+                      <p>В работе, назначен техник</p>
+                    </li>
+                    <li>
+                      <strong>Запрос договора аренды</strong>
+                      <p>Закрыто, документ отправлен</p>
+                    </li>
+                  </ul>
+                </article>
+
+                <article class="panel-card wide-card">
+                  <div class="panel-head">
+                    <h4>Документы</h4>
+                    <span>Google Drive</span>
+                  </div>
+                  <div class="doc-row">
+                    <span>Договор управления</span>
+                    <button>Открыть</button>
+                  </div>
+                  <div class="doc-row">
+                    <span>Квитанция за март</span>
+                    <button>Скачать</button>
+                  </div>
+                  <div class="doc-row">
+                    <span>Акт выполненных работ</span>
+                    <button>Открыть</button>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section class="screen-panel" data-panel="bot">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Telegram Flow</p>
+                  <h3>Основной мобильный сценарий</h3>
+                </div>
+                <div class="status-chip">Telegram first</div>
+              </div>
+
+              <div class="phone-layout">
+                <div class="phone-frame">
+                  <div class="phone-top">
+                    <span>@rieltora_bot</span>
+                    <span>online</span>
+                  </div>
+                  <div class="chat-thread" id="chat-thread"></div>
+                  <div class="bot-actions">
+                    <button class="bot-action is-selected" data-chat="start">
+                      /start
+                    </button>
+                    <button class="bot-action" data-chat="payments">
+                      Платежи
+                    </button>
+                    <button class="bot-action" data-chat="request">
+                      Создать заявку
+                    </button>
+                  </div>
+                </div>
+
+                <div class="phone-side-info">
+                  <article class="info-card">
+                    <p class="eyebrow">Bot menu</p>
+                    <h4>Команды MVP</h4>
+                    <ul class="feature-list">
+                      <li>/start и привязка клиента</li>
+                      <li>Мои объекты</li>
+                      <li>Мои платежи</li>
+                      <li>Создать заявку</li>
+                      <li>Связаться с менеджером</li>
+                    </ul>
+                  </article>
+
+                  <article class="info-card dark-card">
+                    <p class="eyebrow">Deep Links</p>
+                    <h4>Переходы в кабинет</h4>
+                    <p>
+                      Бот становится первой точкой входа, а затем ведет клиента
+                      в веб-кабинет для более детальной работы.
+                    </p>
+                  </article>
+                </div>
+              </div>
+            </section>
+
+            <section class="screen-panel" data-panel="admin">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Operations Desk</p>
+                  <h3>Кабинет управляющей компании</h3>
+                </div>
+                <div class="status-chip">Manager workspace</div>
+              </div>
+
+              <div class="ops-layout">
+                <article class="ops-board">
+                  <div class="panel-head">
+                    <h4>Заявки по статусам</h4>
+                    <span>Live queue</span>
+                  </div>
+                  <div class="kanban">
+                    <div class="kanban-col">
+                      <h5>Новые</h5>
+                      <div class="ticket urgent">
+                        <strong>Протечка в ванной</strong>
+                        <p>Villa 4, urgent</p>
+                      </div>
+                      <div class="ticket">
+                        <strong>Запрос счета</strong>
+                        <p>Residence A-12</p>
+                      </div>
+                    </div>
+                    <div class="kanban-col">
+                      <h5>В работе</h5>
+                      <div class="ticket active">
+                        <strong>Обслуживание бассейна</strong>
+                        <p>Assigned to Kemal</p>
+                      </div>
+                    </div>
+                    <div class="kanban-col">
+                      <h5>Ожидание</h5>
+                      <div class="ticket muted">
+                        <strong>Продление договора</strong>
+                        <p>Ждем документы клиента</p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="ops-sidebar">
+                  <div class="panel-card">
+                    <div class="panel-head">
+                      <h4>Клиенты</h4>
+                      <span>248 total</span>
+                    </div>
+                    <ul class="compact-list">
+                      <li>Owners: 114</li>
+                      <li>Tenants: 89</li>
+                      <li>Partners: 45</li>
+                    </ul>
+                  </div>
+
+                  <div class="panel-card">
+                    <div class="panel-head">
+                      <h4>Оплаты сегодня</h4>
+                      <span>14 updates</span>
+                    </div>
+                    <table class="mini-table">
+                      <thead>
+                        <tr>
+                          <th>Объект</th>
+                          <th>Сумма</th>
+                          <th>Статус</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>A-12</td>
+                          <td>8,200</td>
+                          <td>paid</td>
+                        </tr>
+                        <tr>
+                          <td>Villa 4</td>
+                          <td>10,200</td>
+                          <td>partial</td>
+                        </tr>
+                        <tr>
+                          <td>B-8</td>
+                          <td>5,100</td>
+                          <td>overdue</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section class="screen-panel" data-panel="data">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Data Backbone</p>
+                  <h3>PostgreSQL как слой хранения</h3>
+                </div>
+                <div class="status-chip">Structured database</div>
+              </div>
+
+              <div class="sheets-layout">
+                <article class="info-card">
+                  <p class="eyebrow">Database</p>
+                  <h4>Основные таблицы MVP</h4>
+                  <div class="sheet-tags">
+                    <span>management_companies</span>
+                    <span>staff</span>
+                    <span>clients</span>
+                    <span>properties</span>
+                    <span>units</span>
+                    <span>ownerships</span>
+                    <span>charges</span>
+                    <span>requests</span>
+                    <span>documents</span>
+                    <span>activity_logs</span>
+                  </div>
+                </article>
+
+                <article class="panel-card wide-card">
+                  <div class="panel-head">
+                    <h4>Поток записи данных</h4>
+                    <span>Backend only</span>
+                  </div>
+                  <div class="data-pipeline">
+                    <div>Telegram / Web</div>
+                    <div>Backend validation</div>
+                    <div>PostgreSQL module</div>
+                    <div>PostgreSQL</div>
+                  </div>
+                </article>
+
+                <article class="panel-card wide-card">
+                  <div class="panel-head">
+                    <h4>Пример таблицы units</h4>
+                    <span>Relational data</span>
+                  </div>
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>unit_id</th>
+                        <th>property_id</th>
+                        <th>unit_number</th>
+                        <th>floor</th>
+                        <th>area</th>
+                        <th>status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>OBJ-001-U1</td>
+                        <td>OBJ-001</td>
+                        <td>1</td>
+                        <td>1</td>
+                        <td>120</td>
+                        <td>occupied</td>
+                      </tr>
+                      <tr>
+                        <td>OBJ-001-U2</td>
+                        <td>OBJ-001</td>
+                        <td>2</td>
+                        <td>1</td>
+                        <td>110</td>
+                        <td>occupied</td>
+                      </tr>
+                      <tr>
+                        <td>OBJ-003-U101</td>
+                        <td>OBJ-003</td>
+                        <td>101</td>
+                        <td>1</td>
+                        <td>98</td>
+                        <td>occupied</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </article>
+              </div>
+            </section>
+          </div>
+
+          <aside class="context-rail">
+            <article class="rail-card">
+              <p class="eyebrow">Feature Layers</p>
+              <div id="feature-stack" class="stack-list"></div>
+            </article>
+
+            <article class="rail-card">
+              <p class="eyebrow">Build Sequence</p>
+              <ol class="road-list">
+                <li>Backend API</li>
+                <li>PostgreSQL Schema</li>
+                <li>Telegram Bot</li>
+                <li>Admin Cabinet</li>
+                <li>Client Cabinet</li>
+              </ol>
+            </article>
+
+            <article class="rail-card accent-card">
+              <p class="eyebrow">Next Step</p>
+              <h4>После визуализации</h4>
+              <p>
+                На этот каркас можно добавлять реальные сущности, API маршруты,
+                авторизацию и интеграцию с Telegram и PostgreSQL.
+              </p>
+            </article>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

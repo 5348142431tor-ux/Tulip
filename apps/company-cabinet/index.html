@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tulip Company Cabinet</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="company-shell">
+      <section class="hero-card">
+        <p class="eyebrow">Tulip Company Access</p>
+        <h1>Кабинет компании</h1>
+        <p id="company-auth-subtitle" class="hero-copy">
+          Вход для руководителя компании через Telegram и пароль.
+        </p>
+      </section>
+
+      <section id="company-auth-card" class="auth-card">
+        <div id="company-access-loading" class="panel is-visible">
+          <p class="muted-copy">Проверяем ссылку входа...</p>
+        </div>
+
+        <div id="company-login-panel" class="panel">
+          <div class="panel-head">
+            <h2>Вход</h2>
+            <p id="company-login-copy" class="muted-copy"></p>
+          </div>
+          <form id="company-login-form" class="form-grid">
+            <label class="field">
+              <span>Пароль компании</span>
+              <input name="password" type="password" placeholder="Введите пароль" required />
+            </label>
+            <div class="form-actions">
+              <div id="company-login-message" class="form-message"></div>
+              <button type="submit" class="primary-button">Войти</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="company-change-password-panel" class="panel">
+          <div class="panel-head">
+            <h2>Сменить пароль</h2>
+            <p class="muted-copy">При первом входе нужно заменить временный пароль на постоянный.</p>
+          </div>
+          <form id="company-change-password-form" class="form-grid">
+            <label class="field">
+              <span>Текущий пароль</span>
+              <input name="currentPassword" type="password" placeholder="Текущий пароль" required />
+            </label>
+            <label class="field">
+              <span>Новый пароль</span>
+              <input name="newPassword" type="password" placeholder="Не менее 8 символов" required />
+            </label>
+            <div class="form-actions">
+              <div id="company-change-password-message" class="form-message"></div>
+              <button type="submit" class="primary-button">Сменить пароль</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="company-dashboard-panel" class="panel">
+          <div class="panel-head">
+            <h2>Кабинет компании</h2>
+            <p id="company-dashboard-copy" class="muted-copy"></p>
+          </div>
+          <div id="company-dashboard-grid" class="dashboard-grid"></div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+  </html>

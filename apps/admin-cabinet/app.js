@@ -1,12 +1,25 @@
 import { resolveApiBaseUrl } from "./src/config.js";
 import {
-  generateTemporaryCompanyPassword,
   normalizeCompanyRecord,
   removeCompanyState,
   renderAdminPanelView,
   renderCompanyClientsView,
   upsertCompanyState,
 } from "./src/companies.js";
+import {
+  renderClientDetailView,
+  renderClientsListView,
+} from "./src/clients.js";
+import {
+  renderRequestDetailView,
+  renderRequestsListView,
+  renderRequestStatusControlView,
+} from "./src/requests.js";
+import {
+  renderPropertiesListView,
+  renderPropertyDetailView,
+  renderUnitDetailView,
+} from "./src/properties.js";
 import {
   canAccessView as canRoleAccessView,
   canAddProperties as canRoleAddProperties,
@@ -23,15 +36,6 @@ const NAVIGATION_STORAGE_KEY = "tulip-admin-cabinet-navigation";
 
 const API_BASE_URL = resolveApiBaseUrl();
 
-const AUTH_USERS = [
-  { id: "OWNER-01", name: "Aidima", role: "project_owner", label: getRoleLabel("project_owner") },
-  { id: "ST-00", name: "Tulip Antalya Admin", role: "company_admin", label: getRoleLabel("company_admin") },
-  { id: "ST-01", name: "Kemal Yilmaz", role: "manager", label: getRoleLabel("manager") },
-  { id: "CLIENT-088", clientId: "CL-088", name: "Elena Petrova", role: "client", label: getRoleLabel("client") },
-  { id: "CLIENT-031", clientId: "CL-031", name: "Ahmet Kaya", role: "client", label: getRoleLabel("client") },
-  { id: "CLIENT-102", clientId: "CL-102", name: "Svetlana Mironova", role: "client", label: getRoleLabel("client") },
-];
-
 function getUserLabel(user) {
   if (!user) return "Гость";
   return user.label || getRoleLabel(user.role);
@@ -39,369 +43,12 @@ function getUserLabel(user) {
 
 const DEFAULT_DATA_STORE = {
   companies: [],
-  staff: [
-    { id: "ST-00", name: "Tulip Antalya Admin", role: "company_admin", openRequests: 2 },
-    { id: "ST-01", name: "Kemal Yilmaz", role: "manager", openRequests: 7 },
-  ],
-  clients: [
-    {
-      id: "CL-088",
-      name: "Elena Petrova",
-      role: "owner",
-      phone: "+90 555 301 12 12",
-      telegram: "@elenap",
-      properties: ["Sunset Residence A-12", "Olive Garden Villa 4"],
-      status: "active",
-    },
-    {
-      id: "CL-031",
-      name: "Ahmet Kaya",
-      role: "tenant",
-      phone: "+90 555 411 09 18",
-      telegram: "@ahmetk",
-      properties: ["Blue Coast B-8"],
-      status: "active",
-    },
-    {
-      id: "CL-102",
-      name: "Svetlana Mironova",
-      role: "owner",
-      phone: "+90 555 901 44 02",
-      telegram: "@svetlanam",
-      properties: ["Marina Park C-3"],
-      status: "inactive",
-    },
-  ],
-  properties: [
-    {
-      id: "PR-019",
-      code: "OBJ-001",
-      title: "Sunset Residence A-12",
-      city: "Antalya",
-      district: "Konyaalti",
-      type: "residential building",
-      manager: "Kemal Yilmaz",
-      status: "active",
-      unitCount: 4,
-      units: [
-        {
-          id: "PR-019-U1",
-          number: "1",
-          area: 120,
-          floor: "1",
-          debt: 0,
-          residents: 3,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-088",
-              name: "Elena Petrova",
-              share: "100%",
-              phone: "+90 555 301 12 12",
-            },
-          ],
-        },
-        {
-          id: "PR-019-U2",
-          number: "2",
-          area: 110,
-          floor: "1",
-          debt: 14500,
-          residents: 2,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-031",
-              name: "Ahmet Kaya",
-              share: "50%",
-              phone: "+90 555 411 09 18",
-            },
-            {
-              clientId: "CL-201",
-              name: "Leyla Kaya",
-              share: "50%",
-              phone: "+90 555 411 09 19",
-            },
-          ],
-        },
-        {
-          id: "PR-019-U3",
-          number: "3",
-          area: 115,
-          floor: "2",
-          debt: 3200,
-          residents: 1,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-202",
-              name: "Maksim Orlov",
-              share: "100%",
-              phone: "+90 555 818 24 10",
-            },
-          ],
-        },
-        {
-          id: "PR-019-U4",
-          number: "4",
-          area: 130,
-          floor: "2",
-          debt: 0,
-          residents: 0,
-          status: "vacant",
-          owners: [
-            {
-              clientId: "CL-203",
-              name: "Deniz Aydin",
-              share: "100%",
-              phone: "+90 555 644 50 80",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "PR-022",
-      code: "OBJ-002",
-      title: "Olive Garden Villa 4",
-      city: "Bodrum",
-      district: "Yalikavak",
-      type: "villa complex",
-      manager: "Kemal Yilmaz",
-      status: "active",
-      unitCount: 3,
-      units: [
-        {
-          id: "PR-022-U1",
-          number: "A",
-          area: 210,
-          floor: "Ground",
-          debt: 10200,
-          residents: 5,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-204",
-              name: "Olga Sidorova",
-              share: "70%",
-              phone: "+90 555 710 40 30",
-            },
-            {
-              clientId: "CL-205",
-              name: "Pavel Sidorov",
-              share: "30%",
-              phone: "+90 555 710 40 31",
-            },
-          ],
-        },
-        {
-          id: "PR-022-U2",
-          number: "B",
-          area: 190,
-          floor: "Ground",
-          debt: 0,
-          residents: 4,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-206",
-              name: "Mina Korkmaz",
-              share: "100%",
-              phone: "+90 555 722 51 99",
-            },
-          ],
-        },
-        {
-          id: "PR-022-U3",
-          number: "C",
-          area: 200,
-          floor: "First",
-          debt: 7600,
-          residents: 0,
-          status: "maintenance watch",
-          owners: [
-            {
-              clientId: "CL-207",
-              name: "Roman Belov",
-              share: "100%",
-              phone: "+90 555 390 20 55",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: "PR-004",
-      code: "OBJ-003",
-      title: "Blue Coast B-8",
-      city: "Antalya",
-      district: "Lara",
-      type: "residential building",
-      manager: "Kemal Yilmaz",
-      status: "maintenance watch",
-      unitCount: 2,
-      units: [
-        {
-          id: "PR-004-U1",
-          number: "101",
-          area: 98,
-          floor: "1",
-          debt: 5100,
-          residents: 2,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-102",
-              name: "Svetlana Mironova",
-              share: "100%",
-              phone: "+90 555 901 44 02",
-            },
-          ],
-        },
-        {
-          id: "PR-004-U2",
-          number: "102",
-          area: 101,
-          floor: "1",
-          debt: 0,
-          residents: 1,
-          status: "occupied",
-          owners: [
-            {
-              clientId: "CL-208",
-              name: "Emre Kaplan",
-              share: "50%",
-              phone: "+90 555 998 66 10",
-            },
-            {
-              clientId: "CL-209",
-              name: "Zeynep Kaplan",
-              share: "50%",
-              phone: "+90 555 998 66 11",
-            },
-          ],
-        },
-      ],
-    },
-  ],
-  requests: [
-    {
-      id: "REQ-1042",
-      clientId: "CL-088",
-      client: "Elena Petrova",
-      property: "Olive Garden Villa 4",
-      category: "repair",
-      priority: "urgent",
-      status: "in_progress",
-      assignee: "Kemal Yilmaz",
-      source: "telegram",
-      createdAt: "2026-04-10 09:15",
-      title: "Протечка в ванной",
-    },
-    {
-      id: "REQ-1043",
-      clientId: "CL-031",
-      client: "Ahmet Kaya",
-      property: "Blue Coast B-8",
-      category: "document",
-      priority: "medium",
-      status: "waiting",
-      assignee: "Kemal Yilmaz",
-      source: "web",
-      createdAt: "2026-04-10 08:20",
-      title: "Продление договора аренды",
-    },
-    {
-      id: "REQ-1044",
-      clientId: "CL-102",
-      client: "Svetlana Mironova",
-      property: "Marina Park C-3",
-      category: "payment",
-      priority: "low",
-      status: "done",
-      assignee: "Tulip Antalya Admin",
-      source: "admin",
-      createdAt: "2026-04-09 17:40",
-      title: "Подтверждение входящего платежа",
-    },
-    {
-      id: "REQ-1045",
-      clientId: "CL-088",
-      client: "Elena Petrova",
-      property: "Sunset Residence A-12",
-      category: "service",
-      priority: "high",
-      status: "new",
-      assignee: "Unassigned",
-      source: "telegram",
-      createdAt: "2026-04-10 10:05",
-      title: "Проверка кондиционера",
-    },
-  ],
-  payments: [
-    {
-      id: "PAY-8001",
-      clientId: "CL-088",
-      client: "Elena Petrova",
-      property: "Sunset Residence A-12",
-      amountDue: 8200,
-      amountPaid: 8200,
-      currency: "TRY",
-      dueDate: "2026-04-15",
-      status: "paid",
-    },
-    {
-      id: "PAY-8002",
-      clientId: "CL-088",
-      client: "Elena Petrova",
-      property: "Olive Garden Villa 4",
-      amountDue: 10200,
-      amountPaid: 5000,
-      currency: "TRY",
-      dueDate: "2026-04-15",
-      status: "partial",
-    },
-    {
-      id: "PAY-8003",
-      clientId: "CL-031",
-      client: "Ahmet Kaya",
-      property: "Blue Coast B-8",
-      amountDue: 5100,
-      amountPaid: 0,
-      currency: "TRY",
-      dueDate: "2026-04-05",
-      status: "overdue",
-    },
-  ],
-  documents: [
-    {
-      id: "DOC-501",
-      clientId: "CL-088",
-      title: "Договор управления",
-      client: "Elena Petrova",
-      property: "Sunset Residence A-12",
-      type: "contract",
-      visibility: "client",
-    },
-    {
-      id: "DOC-502",
-      clientId: "CL-031",
-      title: "Квитанция за март",
-      client: "Ahmet Kaya",
-      property: "Blue Coast B-8",
-      type: "invoice",
-      visibility: "client",
-    },
-    {
-      id: "DOC-503",
-      clientId: "CL-088",
-      title: "Акт выполненных работ",
-      client: "Elena Petrova",
-      property: "Olive Garden Villa 4",
-      type: "act",
-      visibility: "internal + client",
-    },
-  ],
+  staff: [],
+  clients: [],
+  properties: [],
+  requests: [],
+  payments: [],
+  documents: [],
 };
 
 function cloneData(value) {
@@ -500,6 +147,9 @@ function normalizeAidatPaymentLogs(entries = []) {
     receivedDate: entry?.receivedDate || "",
     recordedAt: entry?.recordedAt || "",
     note: entry?.note || "Оплата айдата",
+    recordedByRole: entry?.recordedByRole || "",
+    recordedById: entry?.recordedById || "",
+    recordedByName: entry?.recordedByName || "",
   }));
 }
 
@@ -548,6 +198,7 @@ function normalizePropertyRecord(property = {}, index = 0) {
     city: property.city || "",
     district: property.district || "",
     type: property.type || "residential building",
+    managerId: property.managerId || property.manager_id || "",
     manager: property.manager || "",
     aidatCalculationMode: property.aidatCalculationMode || "equal_for_all",
     aidatStartDate: property.aidatStartDate || "",
@@ -577,19 +228,47 @@ function normalizeClientRecord(client = {}) {
   };
 }
 
+function collectBoundClientIds(properties = []) {
+  const boundClientIds = new Set();
+
+  properties.forEach((property) => {
+    (property.units || []).forEach((unit) => {
+      (unit.owners || []).forEach((owner) => {
+        if (owner?.clientId) {
+          boundClientIds.add(owner.clientId);
+        }
+      });
+    });
+  });
+
+  return boundClientIds;
+}
+
+function pruneUnboundClients(clients = [], properties = []) {
+  const boundClientIds = collectBoundClientIds(properties);
+  return clients.filter((client) => {
+    if (!client?.id) return false;
+    if (boundClientIds.has(client.id)) return true;
+    return Array.isArray(client.properties) && client.properties.length > 0;
+  });
+}
+
 function upsertClientRecordFromOwner(owner = {}, propertyTitle = "") {
   if (!owner.name) return;
 
+  const phone = formatPhone(owner.phoneCountryCode, owner.phoneLocalNumber || owner.phone || "");
   const clientId = owner.clientId || `OWNER-${owner.name}`;
-  const existingClientIndex = dataStore.clients.findIndex(
-    (client) => client.id === clientId
-  );
+  const existingClientIndex = dataStore.clients.findIndex((client) => {
+    if (client.id === clientId) return true;
+    if (!phone) return false;
+    return formatPhone(splitPhoneParts(client.phone).countryCode, splitPhoneParts(client.phone).localNumber) === phone;
+  });
 
   const nextClient = normalizeClientRecord({
     id: clientId,
     name: owner.name,
     role: "owner",
-    phone: owner.phone || "",
+    phone,
     telegram: "",
     telegramId: owner.telegramId || "",
     properties: propertyTitle ? [propertyTitle] : [],
@@ -605,6 +284,7 @@ function upsertClientRecordFromOwner(owner = {}, propertyTitle = "") {
 
     dataStore.clients[existingClientIndex] = normalizeClientRecord({
       ...existingClient,
+      id: existingClient.id || nextClient.id,
       name: existingClient.name || nextClient.name,
       phone: existingClient.phone || nextClient.phone,
       telegramId: owner.telegramId || existingClient.telegramId || "",
@@ -619,17 +299,47 @@ function upsertClientRecordFromOwner(owner = {}, propertyTitle = "") {
 
 function normalizeRequestRecord(request = {}) {
   return {
-    id: request.id || "",
+    id: request.id || request.code || "",
+    requestNumber: Number(request.requestNumber || request.request_number) || 0,
+    code: request.code || request.id || "",
     clientId: request.clientId || "",
     client: request.client || "",
     property: request.property || "",
+    propertyCode: request.propertyCode || "",
+    unitCode: request.unitCode || "",
+    unitNumber: request.unitNumber || "",
     category: request.category || "other",
-    priority: request.priority || "low",
+    priority: request.priority || "medium",
     status: request.status || "new",
+    clientDecisionPending: Boolean(request.clientDecisionPending || request.client_decision_pending),
     assignee: request.assignee || "Unassigned",
+    assigneeId: request.assigneeId || "",
     source: request.source || "admin",
     createdAt: request.createdAt || "",
+    updatedAt: request.updatedAt || "",
     title: request.title || "",
+    description: request.description || "",
+    attachmentUrl: request.attachmentUrl || "",
+    cancelComment: request.cancelComment || "",
+    latestReworkCommentNumber: Number(request.latestReworkCommentNumber || request.latest_rework_comment_number) || 0,
+    latestReworkComment: request.latestReworkComment || request.latest_rework_comment_text || "",
+    latestReworkCommentCreatedAt: request.latestReworkCommentCreatedAt || request.latest_rework_comment_created_at || "",
+    reworkComments: Array.isArray(request.reworkComments || request.rework_comments)
+      ? (request.reworkComments || request.rework_comments).map((item) => ({
+          number: Number(item.number) || 0,
+          comment: item.comment || "",
+          createdAt: item.createdAt || item.created_at || "",
+        }))
+      : [],
+    statusHistory: Array.isArray(request.statusHistory || request.status_history || request.status_logs)
+      ? (request.statusHistory || request.status_history || request.status_logs).map((item) => ({
+          status: item.status || "new",
+          actorRole: item.actorRole || item.actor_role || "",
+          actorName: item.actorName || item.actor_name || "",
+          note: item.note || "",
+          changedAt: item.changedAt || item.changed_at || "",
+        }))
+      : [],
   };
 }
 
@@ -688,15 +398,21 @@ function normalizeDataStore(rawData = {}) {
     documents: mergeById(DEFAULT_DATA_STORE.documents, rawData.documents || []),
   };
 
+  const normalizedProperties = merged.properties.map((property, index) =>
+    normalizePropertyRecord(property, index)
+  );
+  const normalizedClients = pruneUnboundClients(
+    merged.clients.map((client) => normalizeClientRecord(client)),
+    normalizedProperties
+  );
+
   return {
     companies: merged.companies.map((company, index) =>
       normalizeCompanyRecord(company, index)
     ),
     staff: merged.staff.map((staff) => normalizeStaffRecord(staff)),
-    clients: merged.clients.map((client) => normalizeClientRecord(client)),
-    properties: merged.properties.map((property, index) =>
-      normalizePropertyRecord(property, index)
-    ),
+    clients: normalizedClients,
+    properties: normalizedProperties,
     requests: merged.requests.map((request) => normalizeRequestRecord(request)),
     payments: merged.payments.map((payment) => normalizePaymentRecord(payment)),
     documents: merged.documents.map((documentItem) => normalizeDocumentRecord(documentItem)),
@@ -705,33 +421,14 @@ function normalizeDataStore(rawData = {}) {
 
 function loadDataStore() {
   try {
-    const storedValue = window.localStorage.getItem(STORAGE_KEY);
-    if (!storedValue) {
-      return normalizeDataStore(cloneData(DEFAULT_DATA_STORE));
-    }
-
-    const parsed = JSON.parse(storedValue);
-    const storedData = parsed?.data || parsed || {};
-    return normalizeDataStore(storedData);
+    window.localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
-    return normalizeDataStore(cloneData(DEFAULT_DATA_STORE));
+    console.warn("Failed to clear legacy local business data", error);
   }
+  return normalizeDataStore(cloneData(DEFAULT_DATA_STORE));
 }
 
-function persistDataStore() {
-  try {
-    window.localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        version: STORAGE_VERSION,
-        savedAt: new Date().toISOString(),
-        data: dataStore,
-      })
-    );
-  } catch (error) {
-    console.warn("Failed to persist admin cabinet data", error);
-  }
-}
+function persistDataStore() {}
 
 let dataStore = loadDataStore();
 
@@ -740,61 +437,6 @@ function upsertCompany(company, index = 0) {
   const normalized = dataStore.companies.find((item) => item.companyId === normalizeCompanyRecord(company, index).companyId) || normalizeCompanyRecord(company, index);
   persistDataStore();
   return normalized;
-}
-
-function buildClientAuthUsers() {
-  const authUsers = [];
-  const knownClientIds = new Set();
-
-  dataStore.clients
-    .filter((client) => client.name)
-    .forEach((client) => {
-      const clientId = client.id || `CLIENT-NAME-${client.name}`;
-      if (knownClientIds.has(clientId)) return;
-      authUsers.push({
-        id: `CLIENT-${clientId}`,
-        clientId,
-        name: client.name,
-        role: "client",
-        label: "Клиент",
-      });
-      knownClientIds.add(clientId);
-    });
-
-  dataStore.properties.forEach((property) => {
-    (property.units || []).forEach((unit) => {
-      (unit.owners || []).forEach((owner, index) => {
-        if (!owner?.name) return;
-        const clientId =
-          owner.clientId || `OWNER-${property.id}-${unit.id}-${index + 1}`;
-        if (knownClientIds.has(clientId)) return;
-        authUsers.push({
-          id: `CLIENT-${clientId}`,
-          clientId,
-          name: owner.name,
-          role: "client",
-          label: "Клиент",
-        });
-        knownClientIds.add(clientId);
-      });
-    });
-  });
-
-  return authUsers;
-}
-
-function getAuthUsers() {
-  const merged = [...AUTH_USERS];
-  const knownIds = new Set(merged.map((user) => user.id));
-
-  buildClientAuthUsers().forEach((user) => {
-    if (!knownIds.has(user.id)) {
-      merged.push(user);
-      knownIds.add(user.id);
-    }
-  });
-
-  return merged;
 }
 
 function loadAuthState() {
@@ -831,10 +473,15 @@ function persistAuthState(session) {
 const views = {
   dashboard: {
     title: "Главное",
+    source: "mixed",
+    staticAreas: [
+      "Часть KPI и обзорных карточек пока собирается на клиенте.",
+      "Переходы из обзорных блоков еще не везде вынесены в отдельные экраны.",
+    ],
     description:
       "Общий обзор текущей операционной нагрузки: заявки, платежи, загрузка менеджеров и ключевые риски.",
     readiness: "ready",
-    note: "Экран уже собран как рабочий обзор на sample-данных.",
+    note: "Экран уже собран как рабочий обзор текущей операционной картины.",
     items: [
       { label: "Макет и навигация", status: "ready" },
       { label: "KPI и карточки", status: "ready" },
@@ -843,6 +490,8 @@ const views = {
   },
   managers: {
     title: "Менеджеры",
+    source: "db",
+    staticAreas: [],
     description:
       "Команда компании: руководитель, менеджеры, поддержка и бухгалтерия с текущей нагрузкой и ролями.",
     readiness: "progress",
@@ -856,6 +505,10 @@ const views = {
   },
   "admin-panel": {
     title: "Архив домов",
+    source: "mixed",
+    staticAreas: [
+      "Часть служебных действий еще не вынесена в отдельные экранные маршруты.",
+    ],
     description:
       "Раздел создателя платформы для архива домов и системных записей.",
     readiness: "progress",
@@ -869,6 +522,8 @@ const views = {
   },
   "company-clients": {
     title: "Клиенты (Компании)",
+    source: "db",
+    staticAreas: [],
     description:
       "Раздел управляющих компаний, которых создатель платформы подключает вручную и привязывает к Telegram.",
     readiness: "progress",
@@ -882,46 +537,55 @@ const views = {
   },
   requests: {
     title: "Заявки",
+    source: "db",
+    staticAreas: [],
     description:
       "Очередь обращений из Telegram, клиентского кабинета и внутренних процессов с фильтрацией по статусу и приоритету.",
-    readiness: "progress",
-    note: "Просмотр и фильтры есть, но редактирование и API пока не подключены.",
+    readiness: "ready",
+    note: "Раздел уже работает как route-screen: список заявок и отдельная карточка заявки читаются из backend-данных.",
     items: [
       { label: "Таблица заявок", status: "ready" },
       { label: "Фильтры и поиск", status: "ready" },
-      { label: "Изменение статуса", status: "todo" },
-      { label: "Загрузка из backend", status: "todo" },
+      { label: "Карточка заявки", status: "ready" },
+      { label: "Изменение статуса", status: "ready" },
+      { label: "Загрузка из backend", status: "ready" },
     ],
   },
   clients: {
     title: "Клиенты",
+    source: "db",
+    staticAreas: [],
     description:
       "Карточки собственников и арендаторов. Позже здесь будет переход в полную CRM-карточку клиента.",
     readiness: "progress",
-    note: "Список уже визуализирован, но без карточки клиента и без связки с API.",
+    note: "Список и отдельная карточка клиента уже работают как route-screen из данных домов и квартир. CRM-редактирование еще впереди.",
     items: [
       { label: "Список клиентов", status: "ready" },
       { label: "Поиск по клиентам", status: "ready" },
-      { label: "Детальная карточка клиента", status: "todo" },
+      { label: "Детальная карточка клиента", status: "ready" },
       { label: "Редактирование данных", status: "todo" },
     ],
   },
   properties: {
     title: "Объекты",
+    source: "db",
+    staticAreas: [],
     description:
       "Дом выступает как основной объект, а внутри него ведется структура помещений, собственников и задолженностей.",
     readiness: "progress",
-    note: "Теперь раздел уже показывает логику дом -> помещение -> карточка помещения. Следующий шаг это запись в backend и полноценные карточки клиентов.",
+    note: "Раздел уже работает как route-screen: список домов, экран дома и экран помещения разделены. Следующий шаг это дальнейшая модульная чистка и расширение API-операций.",
     items: [
       { label: "Список объектов", status: "ready" },
       { label: "Помещения внутри объекта", status: "ready" },
+      { label: "Карточка помещения", status: "ready" },
       { label: "Добавление объекта", status: "progress" },
-      { label: "Карточка помещения", status: "progress" },
-      { label: "Запись в backend и PostgreSQL", status: "todo" },
+      { label: "Запись в backend и PostgreSQL", status: "progress" },
     ],
   },
   payments: {
     title: "Платежи",
+    source: "db",
+    staticAreas: [],
     description:
       "Контроль начислений, статусов оплат и просрочек. На этом экране удобно строить дальнейшую интеграцию с бухгалтерией.",
     readiness: "progress",
@@ -935,6 +599,11 @@ const views = {
   },
   documents: {
     title: "Документы",
+    source: "static",
+    staticAreas: [
+      "Реестр документов пока отображается как UI-каркас.",
+      "Загрузка файлов и чтение из БД еще не подключены.",
+    ],
     description:
       "Реестр договоров, квитанций и актов со ссылками на Google Drive и настройками видимости для клиента.",
     readiness: "progress",
@@ -955,6 +624,7 @@ const summaryStrip = document.getElementById("summary-strip");
 const viewTitle = document.getElementById("view-title");
 const viewDescription = document.getElementById("view-description");
 const requestFilters = document.getElementById("request-filters");
+const requestsTableNode = document.getElementById("requests-table");
 const searchInput = document.getElementById("global-search");
 const storageStatusBadge = document.getElementById("storage-status-badge");
 const currentUserBadge = document.getElementById("current-user-badge");
@@ -965,6 +635,7 @@ const viewReadiness = document.getElementById("view-readiness");
 const adminPanelGrid = document.getElementById("admin-panel-grid");
 const companyClientsGrid = document.getElementById("company-clients-grid");
 const managersGrid = document.getElementById("managers-grid");
+const propertiesHead = document.querySelector('[data-ui-id="head-properties"]');
 const propertiesBreadcrumbs = document.getElementById("properties-breadcrumbs");
 const propertiesOverview = document.getElementById("properties-overview");
 const propertiesGrid = document.getElementById("properties-grid");
@@ -987,6 +658,16 @@ const cancelPropertyModalButton = document.getElementById("cancel-property-modal
 const propertyForm = document.getElementById("property-form");
 const propertyFormMessage = document.getElementById("property-form-message");
 const propertyUnitCountInput = document.getElementById("property-unit-count");
+const clientRequestModal = document.getElementById("client-request-modal");
+const closeClientRequestModalButton = document.getElementById("close-client-request-modal");
+const cancelClientRequestModalButton = document.getElementById("cancel-client-request-modal");
+const clientRequestForm = document.getElementById("client-request-form");
+const clientRequestUnitField = document.getElementById("client-request-unit-field");
+const clientRequestUnitSelect = document.getElementById("client-request-unit-select");
+const clientRequestDescriptionInput = document.getElementById("client-request-description");
+const clientRequestPhotoInput = document.getElementById("client-request-photo");
+const clientRequestRouting = document.getElementById("client-request-routing");
+const clientRequestMessage = document.getElementById("client-request-message");
 const archiveConfirmModal = document.getElementById("archive-confirm-modal");
 const cancelArchiveConfirmButton = document.getElementById("cancel-archive-confirm");
 const confirmArchiveButton = document.getElementById("confirm-archive-button");
@@ -998,6 +679,13 @@ const aidatPaymentUnitLabel = document.getElementById("aidat-payment-unit-label"
 const aidatPaymentCurrencySelect = document.getElementById("aidat-payment-currency");
 const aidatPaymentRecordedAtInput = document.getElementById("aidat-payment-recorded-at");
 const aidatPaymentMessage = document.getElementById("aidat-payment-message");
+const unitEditModal = document.getElementById("unit-edit-modal");
+const closeUnitEditModalButton = document.getElementById("close-unit-edit-modal");
+const cancelUnitEditModalButton = document.getElementById("cancel-unit-edit-modal");
+const unitEditForm = document.getElementById("unit-edit-form");
+const unitEditTitle = document.getElementById("unit-edit-title");
+const unitEditFields = document.getElementById("unit-edit-fields");
+const unitEditMessage = document.getElementById("unit-edit-message");
 
 const readinessLabels = {
   ready: "Настроено",
@@ -1005,20 +693,42 @@ const readinessLabels = {
   todo: "Не сделано",
 };
 
+const sourceLabels = {
+  db: "База данных",
+  mixed: "Смешанный экран",
+  static: "Статично",
+};
+
+const REQUEST_STATUS_LABELS = {
+  all: "Все",
+  new: "Новый",
+  in_progress: "Принято в работу",
+  done: "Выполнено",
+  cancelled: "Отменено",
+};
+
 let currentView = "dashboard";
 let requestStatusFilter = "all";
 let searchTerm = "";
 let editingCompanyId = null;
 let editingManagerId = null;
+let editingUnitProfileId = null;
 let managerFormFeedback = "";
+let clientDirectorySort = {
+  key: "",
+  direction: "asc",
+};
 let selectedPropertyId = null;
 let selectedUnitId = null;
+let selectedClientRowId = null;
+let selectedRequestCode = null;
 let selectedPropertyReportYear = new Date().getFullYear();
 let isPropertyReportVisible = false;
 let apiStatus = "unknown";
 let pendingArchivePropertyId = null;
 let archiveRestoreTargets = {};
 let pendingAidatPaymentUnitId = null;
+let pendingUnitEditUnitId = null;
 const ownerEditorDrafts = {};
 const restoredAuthState = loadAuthState();
 let adminSessionToken = restoredAuthState?.token || "";
@@ -1043,7 +753,7 @@ function renderStorageStatus() {
   }
 
   if (apiStatus === "offline") {
-    storageStatusBadge.textContent = "Сохранено только локально";
+    storageStatusBadge.textContent = "Не сохранено в БД";
     storageStatusBadge.classList.add("storage-status-local");
     return;
   }
@@ -1057,262 +767,267 @@ function setApiStatus(status) {
   renderStorageStatus();
 }
 
-function nextPropertyId() {
-  const maxValue = dataStore.properties.reduce((max, property) => {
-    const numeric = Number(property.id.replace("PR-", ""));
-    return Number.isNaN(numeric) ? max : Math.max(max, numeric);
-  }, 0);
-
-  return `PR-${String(maxValue + 1).padStart(3, "0")}`;
+function sourcePillClass(source) {
+  return `source-pill source-${source || 'mixed'}`;
 }
 
-function nextPropertyCode() {
-  const maxValue = dataStore.properties.reduce((max, property) => {
-    const numeric = Number(String(property.code || "").replace("OBJ-", ""));
-    return Number.isNaN(numeric) ? max : Math.max(max, numeric);
-  }, 0);
+function renderImpersonationOptions() {
+  if (!authUserSelect) return;
+  authUserSelect.innerHTML = impersonationTargets
+    .map((user) => `<option value="${user.id}">${user.name} • ${user.roleLabel}${user.companyName ? ` • ${user.companyName}` : ""}</option>`)
+    .join("");
 
-  return `OBJ-${String(maxValue + 1).padStart(3, "0")}`;
-}
-
-function getPropertyById(propertyId) {
-  return dataStore.properties.find((property) => property.id === propertyId) || null;
-}
-
-function getPropertyByCode(propertyCode) {
-  return dataStore.properties.find((property) => property.code === propertyCode) || null;
-}
-
-function getUnitById(property, unitId) {
-  if (!property) return null;
-  return property.units.find((unit) => unit.id === unitId) || null;
-}
-
-function getUnitByCode(property, unitCode) {
-  if (!property) return null;
-  return property.units.find((unit) => unit.code === unitCode) || null;
-}
-
-function buildNavigationHash() {
-  const parts = [currentView];
-  const selectedProperty = getPropertyById(selectedPropertyId);
-  const selectedUnit = getUnitById(selectedProperty, selectedUnitId);
-
-  if (currentView === "properties" && selectedProperty?.code) {
-    parts.push(selectedProperty.code);
-  }
-
-  if (currentView === "properties" && selectedUnit?.code) {
-    parts.push(selectedUnit.code);
-  }
-
-  return `#${parts.join("/")}`;
-}
-
-function persistNavigationState() {
-  const payload = {
-    view: currentView,
-    propertyCode: getPropertyById(selectedPropertyId)?.code || "",
-    unitCode:
-      getUnitById(getPropertyById(selectedPropertyId), selectedUnitId)?.code || "",
-    savedAt: new Date().toISOString(),
-  };
-
-  try {
-    window.localStorage.setItem(NAVIGATION_STORAGE_KEY, JSON.stringify(payload));
-  } catch (error) {
-    console.warn("Failed to persist navigation state", error);
-  }
-
-  const nextHash = buildNavigationHash();
-  if (window.location.hash !== nextHash) {
-    window.history.replaceState(null, "", nextHash);
+  if (currentUser?.id) {
+    authUserSelect.value = currentUser.id;
+  } else if (impersonationTargets[0]) {
+    authUserSelect.value = impersonationTargets[0].id;
   }
 }
 
-function readNavigationState() {
-  const hash = String(window.location.hash || "").replace(/^#/, "").trim();
-  if (hash) {
-    const [view = "", propertyCode = "", unitCode = ""] = hash.split("/");
-    return { view, propertyCode, unitCode };
-  }
+async function openAuthModal() {
+  if (!authModal) return;
+  authMessage.textContent = "";
+  authSubmitButton.disabled = false;
+  authRestoreButton.hidden = true;
+  authPasswordInput.value = "";
 
-  try {
-    const storedValue = window.localStorage.getItem(NAVIGATION_STORAGE_KEY);
-    if (!storedValue) return null;
-    const parsed = JSON.parse(storedValue);
-    return {
-      view: parsed?.view || "",
-      propertyCode: parsed?.propertyCode || "",
-      unitCode: parsed?.unitCode || "",
-    };
-  } catch (error) {
-    return null;
-  }
-}
+  if (hasOwnerImpersonationAccess()) {
+    authMode = "impersonate";
+    authTitle.textContent = "Войти как пользователь";
+    authLoginField.hidden = true;
+    authPasswordField.hidden = true;
+    authImpersonationField.hidden = false;
+    authSubmitButton.textContent = "Открыть кабинет";
+    authRestoreButton.hidden = !currentImpersonator;
+    authMessage.textContent = "Загружаем список пользователей...";
+    authModal.classList.remove("is-hidden");
+    authModal.setAttribute("aria-hidden", "false");
 
-async function restoreNavigationState() {
-  const navigationState = readNavigationState();
-  if (!navigationState) return;
-
-  if (navigationState.view && canAccessView(navigationState.view)) {
-    currentView = navigationState.view;
-  }
-
-  if (currentView === "properties" && navigationState.propertyCode) {
-    let property = getPropertyByCode(navigationState.propertyCode);
-    if (!property) {
-      property = await loadPropertyDetailFromApi(navigationState.propertyCode);
+    try {
+      impersonationTargets = await fetchImpersonationTargetsViaApi();
+      renderImpersonationOptions();
+      authMessage.textContent = currentImpersonator
+        ? `Сейчас открыт кабинет пользователя ${currentUser.name}.`
+        : "Создатель может открыть кабинет любого сотрудника или клиента.";
+    } catch (error) {
+      authUserSelect.innerHTML = "";
+      authSubmitButton.disabled = true;
+      authMessage.textContent = error.message || "Не удалось загрузить список пользователей.";
     }
+    return;
+  }
 
-    if (property && propertyBelongsToCurrentClient(property)) {
-      selectedPropertyId = property.id;
+  authMode = "login";
+  authTitle.textContent = "Вход в кабинет";
+  authLoginField.hidden = false;
+  authPasswordField.hidden = false;
+  authImpersonationField.hidden = true;
+  authSubmitButton.textContent = "Войти";
+  authLoginInput.value = currentUser?.login || "";
+  authMessage.textContent = "Введите логин и пароль.";
+  authModal.classList.remove("is-hidden");
+  authModal.setAttribute("aria-hidden", "false");
+}
 
-      if (navigationState.unitCode) {
-        const unit = getUnitByCode(property, navigationState.unitCode);
-        if (unit && unitBelongsToCurrentClient(unit)) {
-          selectedUnitId = unit.id;
-        }
+function closeAuthModal() {
+  if (!authModal) return;
+  authModal.classList.add("is-hidden");
+  authModal.setAttribute("aria-hidden", "true");
+}
+
+
+
+function clearAuthState() {
+  adminSessionToken = "";
+  currentUser = null;
+  currentImpersonator = null;
+  persistAuthState(null);
+}
+
+async function fetchJson(path, options = {}) {
+  const hasBody = options.body !== undefined && options.body !== null;
+  const authHeaders = adminSessionToken
+    ? {
+        Authorization: `Bearer ${adminSessionToken}`,
       }
-    }
-  }
-}
-
-function isClientRole() {
-  return currentUser?.role === "client";
-}
-
-function getCurrentClientId() {
-  return currentUser?.clientId || null;
-}
-
-function getCurrentClientRecord() {
-  const clientId = getCurrentClientId();
-  if (!clientId) return null;
-  return dataStore.clients.find((client) => client.id === clientId) || null;
-}
-
-function unitBelongsToCurrentClient(unit) {
-  if (!isClientRole()) return true;
-  const clientId = getCurrentClientId();
-  return Boolean(
-    unit?.owners?.some((owner) => owner.clientId === clientId)
-  );
-}
-
-function propertyBelongsToCurrentClient(property) {
-  if (!isClientRole()) return true;
-  return Boolean(property?.units?.some((unit) => unitBelongsToCurrentClient(unit)));
-}
-
-function getVisibleProperties() {
-  if (!isClientRole()) return dataStore.properties;
-  return dataStore.properties.filter((property) => propertyBelongsToCurrentClient(property));
-}
-
-function getVisibleUnits(property) {
-  if (!property) return [];
-  const units = isClientRole()
-    ? (property.units || []).filter((unit) => unitBelongsToCurrentClient(unit))
-    : property.units || [];
-
-  return [...units].sort(compareUnitNumbers);
-}
-
-function compareUnitNumbers(leftUnit, rightUnit) {
-  return String(leftUnit?.number || "").localeCompare(String(rightUnit?.number || ""), "ru", {
-    numeric: true,
-    sensitivity: "base",
+    : {};
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      ...authHeaders,
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {}),
+    },
+    ...options,
   });
-}
 
-function getScopedRequests() {
-  if (!isClientRole()) return dataStore.requests;
-  const clientId = getCurrentClientId();
-  return dataStore.requests.filter((request) => request.clientId === clientId);
-}
+  const payload = await response.json().catch(() => ({}));
 
-function getScopedPayments() {
-  if (!isClientRole()) return dataStore.payments;
-  const clientId = getCurrentClientId();
-  const clientName = currentUser?.name || "";
-  return dataStore.payments.filter(
-    (payment) => payment.clientId === clientId || payment.client === clientName
-  );
-}
-
-function getScopedDocuments() {
-  if (!isClientRole()) return dataStore.documents;
-  const clientId = getCurrentClientId();
-  const clientName = currentUser?.name || "";
-  return dataStore.documents.filter(
-    (documentItem) =>
-      documentItem.clientId === clientId || documentItem.client === clientName
-  );
-}
-
-function getPaymentVisibleProperties() {
-  if (isClientRole()) return getVisibleProperties();
-  if (currentUser?.role === "manager") {
-    return dataStore.properties.filter((property) => property.manager === currentUser.name);
-  }
-  return dataStore.properties;
-}
-
-function buildIncomingPaymentRows() {
-  return getPaymentVisibleProperties()
-    .flatMap((property) =>
-      (property.units || []).flatMap((unit) =>
-        (Array.isArray(unit.aidatPaymentLogs) ? unit.aidatPaymentLogs : []).map((payment, index) => ({
-          id: payment.id || `${property.code}-${unit.code}-payment-${index + 1}`,
-          propertyTitle: property.title,
-          propertyCode: property.code,
-          unitNumber: unit.number,
-          clientName: unitOwnerSummary(unit),
-          paymentDate: payment.receivedDate || payment.recordedAt || "",
-          recordedAt: payment.recordedAt || payment.receivedDate || "",
-          amount: Number(payment.amount || 0),
-          appliedAmount: Number(payment.appliedAmount || payment.amount || 0),
-          currency: payment.currency || property.aidatCurrencyCode || "TRY",
-        }))
-      )
-    )
-    .sort((left, right) =>
-      String(right.recordedAt || right.paymentDate).localeCompare(
-        String(left.recordedAt || left.paymentDate)
-      )
-    );
-}
-
-function getClientPrimaryUnit() {
-  if (!isClientRole()) return null;
-  for (const property of getVisibleProperties()) {
-    const unit = getVisibleUnits(property)[0];
-    if (unit) {
-      return { property, unit };
+  if (!response.ok) {
+    if (response.status === 401) {
+      clearAuthState();
     }
+    const error = new Error(payload.message || "API request failed");
+    error.statusCode = response.status;
+    throw error;
   }
-  return null;
+
+  return payload;
 }
 
-function unitOwnerSummary(unit) {
-  const ownerNames = (unit?.owners || [])
-    .map((owner) => owner.name)
-    .filter(Boolean);
-
-  if (!ownerNames.length) return "Собственник не назначен";
-  if (ownerNames.length === 1) return ownerNames[0];
-  return `${ownerNames[0]} +${ownerNames.length - 1}`;
+function applyAdminSession(session) {
+  adminSessionToken = session?.token || "";
+  currentUser = session?.user || null;
+  currentImpersonator = session?.impersonator || null;
+  resetGlobalSearch();
+  persistAuthState(session);
 }
 
-function normalizeOwner(owner, index) {
-  return {
-    clientId: owner?.clientId || `NEW-${index + 1}`,
-    name: owner?.name || "",
-    share: owner?.share || "",
-    phone: owner?.phone || "",
-    telegramId: owner?.telegramId || "",
-  };
+async function loginAdminSessionViaApi(login, password) {
+  const payload = await fetchJson("/api/admin-auth/login", {
+    method: "POST",
+    body: JSON.stringify({ login, password }),
+  });
+
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Admin session was not returned by API");
+  }
+
+  return payload.item;
+}
+
+async function validateAdminSessionViaApi() {
+  if (!adminSessionToken) return null;
+  const payload = await fetchJson("/api/admin-auth/session");
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Admin session is invalid");
+  }
+  return payload.item;
+}
+
+async function fetchImpersonationTargetsViaApi() {
+  const payload = await fetchJson("/api/admin-auth/targets");
+  return Array.isArray(payload.items) ? payload.items : [];
+}
+
+async function impersonateAdminSessionViaApi(targetId) {
+  const payload = await fetchJson("/api/admin-auth/impersonate", {
+    method: "POST",
+    body: JSON.stringify({ targetId }),
+  });
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Impersonation session was not returned by API");
+  }
+  return payload.item;
+}
+
+async function restoreAdminSessionViaApi() {
+  const payload = await fetchJson("/api/admin-auth/restore", {
+    method: "POST",
+  });
+  if (!payload.item?.token || !payload.item?.user) {
+    throw new Error("Creator session was not returned by API");
+  }
+  return payload.item;
+}
+
+async function syncCompaniesFromApi() {
+  try {
+    const payload = await fetchJson("/api/companies");
+    if (Array.isArray(payload.items)) {
+      dataStore.companies = payload.items.map((company, index) => normalizeCompanyRecord(company, index));
+      persistDataStore();
+    }
+    setApiStatus("connected");
+  } catch (error) {
+    setApiStatus("offline");
+  }
+}
+
+async function createCompanyViaApi(companyInput) {
+  const payload = await fetchJson("/api/companies", {
+    method: "POST",
+    body: JSON.stringify(companyInput),
+  });
+  if (!payload.item) {
+    throw new Error("Company was not returned by API");
+  }
+  setApiStatus("connected");
+  return upsertCompany(payload.item);
+}
+
+async function updateCompanyViaApi(companyId, companyInput) {
+  const payload = await fetchJson(`/api/companies/${companyId}`, {
+    method: "PUT",
+    body: JSON.stringify(companyInput),
+  });
+  if (!payload.item) {
+    throw new Error("Company was not returned by API");
+  }
+  setApiStatus("connected");
+  return upsertCompany(payload.item);
+}
+
+async function deleteCompanyViaApi(companyId) {
+  const payload = await fetchJson(`/api/companies/${companyId}`, {
+    method: "DELETE",
+  });
+  if (!payload.item?.companyId) {
+    throw new Error("Deleted company was not returned by API");
+  }
+  setApiStatus("connected");
+  dataStore.companies = removeCompanyState(dataStore.companies, payload.item.companyId);
+  persistDataStore();
+  return payload.item;
+}
+
+async function syncManagersFromApi() {
+  if (!canAccessView("managers")) return;
+  try {
+    const payload = await fetchJson("/api/managers");
+    if (Array.isArray(payload.items)) {
+      const nonManagers = dataStore.staff.filter((member) => member.role !== "manager");
+      dataStore.staff = [...nonManagers, ...payload.items.map((item) => normalizeStaffRecord(item))];
+      persistDataStore();
+    }
+    setApiStatus("connected");
+  } catch (error) {
+    setApiStatus("offline");
+  }
+}
+
+async function createManagerViaApi(managerInput) {
+  const payload = await fetchJson("/api/managers", {
+    method: "POST",
+    body: JSON.stringify(managerInput),
+  });
+  if (!payload.item) {
+    throw new Error("Manager was not returned by API");
+  }
+  setApiStatus("connected");
+  return normalizeStaffRecord(payload.item);
+}
+
+async function updateManagerViaApi(managerId, managerInput) {
+  const payload = await fetchJson(`/api/managers/${managerId}`, {
+    method: "PUT",
+    body: JSON.stringify(managerInput),
+  });
+  if (!payload.item) {
+    throw new Error("Manager update was not returned by API");
+  }
+  setApiStatus("connected");
+  return normalizeStaffRecord(payload.item);
+}
+
+async function deleteManagerViaApi(managerId) {
+  const payload = await fetchJson(`/api/managers/${managerId}`, {
+    method: "DELETE",
+  });
+  if (!payload.item) {
+    throw new Error("Manager deletion was not returned by API");
+  }
+  setApiStatus("connected");
+  return payload.item;
 }
 
 function normalizeApiOwner(owner, index) {
@@ -1370,6 +1085,7 @@ function normalizeApiProperty(property, index = 0) {
     city: property?.city || "",
     district: property?.district || "",
     type: property?.type || "residential_building",
+    managerId: property?.managerId || property?.manager_id || "",
     manager: property?.manager || "",
     aidatCalculationMode: property?.aidatCalculationMode || "equal_for_all",
     aidatStartDate: property?.aidatStartDate || "",
@@ -1405,228 +1121,9 @@ function upsertProperty(property) {
   return normalized;
 }
 
-function clearAuthState() {
-  adminSessionToken = "";
-  currentUser = null;
-  currentImpersonator = null;
-  persistAuthState(null);
-}
-
-async function fetchJson(path, options = {}) {
-  const hasBody = options.body !== undefined && options.body !== null;
-  const authHeaders = adminSessionToken
-    ? {
-        Authorization: `Bearer ${adminSessionToken}`,
-      }
-    : {};
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      ...authHeaders,
-      ...(hasBody ? { "Content-Type": "application/json" } : {}),
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
-
-  const payload = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      clearAuthState();
-    }
-    const error = new Error(payload.message || "API request failed");
-    error.statusCode = response.status;
-    throw error;
-  }
-
-  return payload;
-}
-
-function applyAdminSession(session) {
-  adminSessionToken = session?.token || "";
-  currentUser = session?.user || null;
-  currentImpersonator = session?.impersonator || null;
-  persistAuthState(session);
-}
-
-async function loginAdminSessionViaApi(login, password) {
-  const payload = await fetchJson("/api/admin-auth/login", {
-    method: "POST",
-    body: JSON.stringify({ login, password }),
-  });
-
-  if (!payload.item?.token || !payload.item?.user) {
-    throw new Error("Admin session was not returned by API");
-  }
-
-  return payload.item;
-}
-
-async function validateAdminSessionViaApi() {
-  if (!adminSessionToken) return null;
-
-  const payload = await fetchJson("/api/admin-auth/session");
-
-  if (!payload.item?.token || !payload.item?.user) {
-    throw new Error("Admin session is invalid");
-  }
-
-  return payload.item;
-}
-
-async function fetchImpersonationTargetsViaApi() {
-  const payload = await fetchJson("/api/admin-auth/targets");
-  return Array.isArray(payload.items) ? payload.items : [];
-}
-
-async function impersonateAdminSessionViaApi(targetId) {
-  const payload = await fetchJson("/api/admin-auth/impersonate", {
-    method: "POST",
-    body: JSON.stringify({ targetId }),
-  });
-
-  if (!payload.item?.token || !payload.item?.user) {
-    throw new Error("Impersonation session was not returned by API");
-  }
-
-  return payload.item;
-}
-
-async function restoreAdminSessionViaApi() {
-  const payload = await fetchJson("/api/admin-auth/restore", {
-    method: "POST",
-  });
-
-  if (!payload.item?.token || !payload.item?.user) {
-    throw new Error("Creator session was not returned by API");
-  }
-
-  return payload.item;
-}
-
-async function syncCompaniesFromApi() {
-  try {
-    const payload = await fetchJson("/api/companies");
-    if (Array.isArray(payload.items)) {
-      dataStore.companies = payload.items.map((company, index) =>
-        normalizeCompanyRecord(company, index)
-      );
-      persistDataStore();
-    }
-    setApiStatus("connected");
-  } catch (error) {
-    setApiStatus("offline");
-  }
-}
-
-async function createCompanyViaApi(companyInput) {
-  const payload = await fetchJson("/api/companies", {
-    method: "POST",
-    body: JSON.stringify(companyInput),
-  });
-
-  if (!payload.item) {
-    throw new Error("Company was not returned by API");
-  }
-
-  setApiStatus("connected");
-  return upsertCompany(payload.item);
-}
-
-async function updateCompanyViaApi(companyId, companyInput) {
-  const payload = await fetchJson(`/api/companies/${companyId}`, {
-    method: "PUT",
-    body: JSON.stringify(companyInput),
-  });
-
-  if (!payload.item) {
-    throw new Error("Company was not returned by API");
-  }
-
-  setApiStatus("connected");
-  return upsertCompany(payload.item);
-}
-
-async function deleteCompanyViaApi(companyId) {
-  const payload = await fetchJson(`/api/companies/${companyId}`, {
-    method: "DELETE",
-  });
-
-  if (!payload.item?.companyId) {
-    throw new Error("Deleted company was not returned by API");
-  }
-
-  setApiStatus("connected");
-  dataStore.companies = removeCompanyState(dataStore.companies, payload.item.companyId);
-  persistDataStore();
-  return payload.item;
-}
-
-async function syncManagersFromApi() {
-  if (!canAccessView("managers")) return;
-
-  try {
-    const payload = await fetchJson("/api/managers");
-    if (Array.isArray(payload.items)) {
-      const nonManagers = dataStore.staff.filter((member) => member.role !== "manager");
-      dataStore.staff = [
-        ...nonManagers,
-        ...payload.items.map((item) => normalizeStaffRecord(item)),
-      ];
-      persistDataStore();
-    }
-    setApiStatus("connected");
-  } catch (error) {
-    setApiStatus("offline");
-  }
-}
-
-async function createManagerViaApi(managerInput) {
-  const payload = await fetchJson("/api/managers", {
-    method: "POST",
-    body: JSON.stringify(managerInput),
-  });
-
-  if (!payload.item) {
-    throw new Error("Manager was not returned by API");
-  }
-
-  setApiStatus("connected");
-  return normalizeStaffRecord(payload.item);
-}
-
-async function updateManagerViaApi(managerId, managerInput) {
-  const payload = await fetchJson(`/api/managers/${managerId}`, {
-    method: "PUT",
-    body: JSON.stringify(managerInput),
-  });
-
-  if (!payload.item) {
-    throw new Error("Manager update was not returned by API");
-  }
-
-  setApiStatus("connected");
-  return normalizeStaffRecord(payload.item);
-}
-
-async function deleteManagerViaApi(managerId) {
-  const payload = await fetchJson(`/api/managers/${managerId}`, {
-    method: "DELETE",
-  });
-
-  if (!payload.item) {
-    throw new Error("Manager deletion was not returned by API");
-  }
-
-  setApiStatus("connected");
-  return payload.item;
-}
-
 async function syncPropertiesFromApi() {
   try {
-    const payload = await fetchJson(
-      `/api/properties?includeArchived=${isProjectOwner() ? "1" : "0"}`
-    );
+    const payload = await fetchJson(`/api/properties?includeArchived=${isProjectOwner() ? "1" : "0"}`);
     if (Array.isArray(payload.items)) {
       payload.items.forEach((property, index) => {
         upsertProperty(normalizeApiProperty(property, index));
@@ -1649,7 +1146,6 @@ async function loadPropertyDetailFromApi(propertyCode) {
   } catch (error) {
     setApiStatus("offline");
   }
-
   return null;
 }
 
@@ -1658,11 +1154,9 @@ async function createPropertyViaApi(propertyInput) {
     method: "POST",
     body: JSON.stringify(propertyInput),
   });
-
   if (!payload.item) {
     throw new Error("Property was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
 }
@@ -1672,11 +1166,9 @@ async function savePropertyFinanceViaApi(propertyCode, financeSettings) {
     method: "PUT",
     body: JSON.stringify(financeSettings),
   });
-
   if (!payload.item) {
     throw new Error("Updated property finance was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
 }
@@ -1686,11 +1178,9 @@ async function saveAidatPaymentViaApi(unitCode, paymentInput) {
     method: "POST",
     body: JSON.stringify(paymentInput),
   });
-
   if (!payload.item) {
     throw new Error("Updated property after aidat payment was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
 }
@@ -1700,11 +1190,9 @@ async function saveOwnersViaApi(unitCode, owners) {
     method: "PUT",
     body: JSON.stringify({ owners }),
   });
-
   if (!payload.item) {
     throw new Error("Updated property was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
 }
@@ -1714,11 +1202,9 @@ async function saveUnitProfileViaApi(unitCode, unitProfile) {
     method: "PUT",
     body: JSON.stringify(unitProfile),
   });
-
   if (!payload.item) {
     throw new Error("Updated unit profile was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
 }
@@ -1727,11 +1213,9 @@ async function archivePropertyViaApi(propertyCode) {
   const payload = await fetchJson(`/api/properties/${propertyCode}/archive`, {
     method: "PATCH",
   });
-
   if (!payload.item) {
     throw new Error("Archived property was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
 }
@@ -1741,13 +1225,1161 @@ async function restorePropertyViaApi(propertyCode, targetCompanyId = "") {
     method: "PATCH",
     body: JSON.stringify(targetCompanyId ? { targetCompanyId } : {}),
   });
-
   if (!payload.item) {
     throw new Error("Restored property was not returned by API");
   }
-
   setApiStatus("connected");
   return upsertProperty(payload.item);
+}
+
+async function syncRequestsFromApi() {
+  const payload = await fetchJson('/api/requests');
+  dataStore.requests = Array.isArray(payload.items)
+    ? payload.items.map(normalizeRequestRecord)
+    : [];
+  setApiStatus('connected');
+  return dataStore.requests;
+}
+
+async function createRequestViaApi(requestInput) {
+  const payload = await fetchJson('/api/requests', {
+    method: 'POST',
+    body: JSON.stringify(requestInput || {}),
+  });
+  if (!payload.item) {
+    throw new Error('Created request was not returned by API');
+  }
+  setApiStatus('connected');
+  return normalizeRequestRecord(payload.item);
+}
+
+async function updateRequestStatusViaApi(requestCode, status, cancelComment = '') {
+  const payload = await fetchJson(`/api/requests/${requestCode}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status, cancelComment }),
+  });
+  if (!payload.item) {
+    throw new Error('Updated request was not returned by API');
+  }
+  setApiStatus('connected');
+  return normalizeRequestRecord(payload.item);
+}
+
+async function reviewRequestViaApi(requestCode, action, comment = '') {
+  const payload = await fetchJson(`/api/requests/${requestCode}/client-review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action, comment }),
+  });
+  if (!payload.item) {
+    throw new Error('Updated request was not returned by API');
+  }
+  setApiStatus('connected');
+  return normalizeRequestRecord(payload.item);
+}
+
+function getPropertyById(propertyId) {
+  return dataStore.properties.find((property) => property.id === propertyId) || null;
+}
+
+function getPropertyByCode(propertyCode) {
+  return dataStore.properties.find((property) => property.code === propertyCode) || null;
+}
+
+function getUnitById(property, unitId) {
+  if (!property) return null;
+  return property.units.find((unit) => unit.id === unitId || unit.code === unitId) || null;
+}
+
+function getUnitByCode(property, unitCode) {
+  if (!property) return null;
+  return property.units.find((unit) => unit.code === unitCode) || null;
+}
+
+async function openPropertyById(propertyId) {
+  selectedPropertyId = String(propertyId || '').trim();
+  selectedUnitId = null;
+  const property = getPropertyById(selectedPropertyId);
+  if (property?.code) {
+    await loadPropertyDetailFromApi(property.code);
+  }
+  renderProperties();
+  persistNavigationState();
+}
+
+function openUnitByCode(unitCode) {
+  selectedUnitId = String(unitCode || '').trim();
+  renderProperties();
+  persistNavigationState();
+}
+
+window.__openTulipProperty = openPropertyById;
+window.__openTulipUnit = openUnitByCode;
+
+function buildNavigationHash() {
+  const parts = [currentView];
+  const selectedProperty = getPropertyById(selectedPropertyId);
+  const selectedUnit = getUnitById(selectedProperty, selectedUnitId);
+
+  if (currentView === "properties" && selectedProperty?.code) {
+    parts.push(selectedProperty.code);
+  }
+
+  if (currentView === "properties" && selectedUnit?.code) {
+    parts.push(selectedUnit.code);
+  }
+
+  if (currentView === "clients" && selectedClientRowId) {
+    parts.push(encodeURIComponent(selectedClientRowId));
+  }
+
+  if (currentView === "requests" && selectedRequestCode) {
+    parts.push(encodeURIComponent(selectedRequestCode));
+  }
+
+  return `#${parts.join("/")}`;
+}
+
+function persistNavigationState() {
+  const payload = {
+    view: currentView,
+    propertyCode: getPropertyById(selectedPropertyId)?.code || "",
+    unitCode:
+      getUnitById(getPropertyById(selectedPropertyId), selectedUnitId)?.code || "",
+    clientRowId: selectedClientRowId || "",
+    requestCode: selectedRequestCode || "",
+    savedAt: new Date().toISOString(),
+  };
+
+  try {
+    window.localStorage.setItem(NAVIGATION_STORAGE_KEY, JSON.stringify(payload));
+  } catch (error) {
+    console.warn("Failed to persist navigation state", error);
+  }
+
+  const nextHash = buildNavigationHash();
+  if (window.location.hash !== nextHash) {
+    window.history.replaceState(null, "", nextHash);
+  }
+}
+
+function readNavigationState() {
+  const hash = String(window.location.hash || "").replace(/^#/, "").trim();
+  if (hash) {
+    const [view = "", propertyCode = "", unitCode = ""] = hash.split("/");
+    return { view, propertyCode, unitCode };
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(NAVIGATION_STORAGE_KEY);
+    if (!storedValue) return null;
+    const parsed = JSON.parse(storedValue);
+    return {
+      view: parsed?.view || "",
+      propertyCode: parsed?.propertyCode || "",
+      unitCode: parsed?.unitCode || "",
+      clientRowId: parsed?.clientRowId || "",
+      requestCode: parsed?.requestCode || "",
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+async function restoreNavigationState() {
+  const navigationState = readNavigationState();
+  if (!navigationState) return;
+
+  if (navigationState.view && canAccessView(navigationState.view)) {
+    currentView = navigationState.view;
+  }
+
+  if (currentView === "properties" && navigationState.propertyCode) {
+    let property = getPropertyByCode(navigationState.propertyCode);
+    if (!property) {
+      property = await loadPropertyDetailFromApi(navigationState.propertyCode);
+    }
+
+    if (property && propertyBelongsToCurrentClient(property)) {
+      selectedPropertyId = property.id;
+
+      if (navigationState.unitCode) {
+        const unit = getUnitByCode(property, navigationState.unitCode);
+        if (unit && unitBelongsToCurrentClient(unit)) {
+          selectedUnitId = unit.id;
+        }
+      }
+    }
+  }
+
+  if (currentView === "clients" && navigationState.clientRowId) {
+    const row = getClientDirectoryRowById(decodeURIComponent(navigationState.clientRowId));
+    if (row) {
+      selectedClientRowId = row.id;
+    }
+  }
+
+  if (currentView === "requests" && navigationState.requestCode) {
+    const request = getRequestByCode(decodeURIComponent(navigationState.requestCode));
+    if (request) {
+      selectedRequestCode = request.code;
+    }
+  }
+}
+
+function isClientRole() {
+  return currentUser?.role === "client";
+}
+
+function getCurrentClientId() {
+  return currentUser?.clientId || null;
+}
+
+function getCurrentClientRecord() {
+  const clientId = getCurrentClientId();
+  if (!clientId) return null;
+  return dataStore.clients.find((client) => client.id === clientId) || null;
+}
+
+function ownerMatchesCurrentClient(owner) {
+  if (!owner) return false;
+  const clientId = getCurrentClientId();
+  const clientRecord = getCurrentClientRecord();
+  const ownerPhone = formatPhone(owner.phoneCountryCode, owner.phoneLocalNumber || owner.phone || "");
+  const clientPhone = formatPhone(
+    splitPhoneParts(clientRecord?.phone || "").countryCode,
+    splitPhoneParts(clientRecord?.phone || "").localNumber
+  );
+
+  if (owner.clientId === clientId) return true;
+  if (clientPhone && ownerPhone && ownerPhone === clientPhone) return true;
+  if (clientRecord?.telegramId && owner.telegramId && owner.telegramId === clientRecord.telegramId) return true;
+  return false;
+}
+
+function unitBelongsToCurrentClient(unit) {
+  if (!isClientRole()) return true;
+  return Boolean(unit?.owners?.some((owner) => ownerMatchesCurrentClient(owner)));
+}
+
+function propertyBelongsToCurrentClient(property) {
+  if (!isClientRole()) return true;
+  return Boolean(property?.units?.some((unit) => unitBelongsToCurrentClient(unit)));
+}
+
+function getVisibleProperties() {
+  if (isClientRole()) {
+    return dataStore.properties.filter((property) => propertyBelongsToCurrentClient(property));
+  }
+
+  if (currentUser?.role === "company_admin") {
+    const currentCompanyCode = currentUser?.company?.code || "";
+    return dataStore.properties.filter((property) => property.companyId === currentCompanyCode);
+  }
+
+  if (currentUser?.role === "manager") {
+    const currentCompanyCode = currentUser?.company?.code || "";
+    return dataStore.properties.filter(
+      (property) => property.managerId === currentUser.id
+        && property.companyId === currentCompanyCode
+    );
+  }
+
+  return dataStore.properties;
+}
+
+function getVisibleUnits(property) {
+  if (!property) return [];
+  const units = isClientRole()
+    ? (property.units || []).filter((unit) => unitBelongsToCurrentClient(unit))
+    : property.units || [];
+
+  return [...units].sort(compareUnitNumbers);
+}
+
+function getScopedManagers() {
+  if (currentUser?.role === "manager") {
+    return dataStore.staff.filter(
+      (member) => member.role === "manager" && member.id === currentUser.id
+    );
+  }
+
+  if (currentUser?.role === "company_admin") {
+    const currentCompanyCode = currentUser?.company?.code || "";
+    const companyProperties = currentCompanyCode
+      ? dataStore.properties.filter((property) => property.companyId === currentCompanyCode)
+      : [];
+    const companyManagerNames = new Set(
+      companyProperties.map((property) => String(property.manager || "").trim()).filter(Boolean)
+    );
+
+    return dataStore.staff.filter((member) => {
+      if (member.role !== "manager") return false;
+      if (currentCompanyCode && member.companyId === currentCompanyCode) return true;
+      return companyManagerNames.has(String(member.name || "").trim());
+    });
+  }
+
+  return dataStore.staff.filter((member) => member.role === "manager");
+}
+
+function canAddAidatPaymentForCurrentUser(property) {
+  if (!property) return false;
+  if (currentUser?.role === "project_owner") return true;
+  if (currentUser?.role === "company_admin") {
+    return property.companyId === (currentUser?.company?.code || "");
+  }
+  if (currentUser?.role === "manager") {
+    return Boolean(currentUser?.canRecordClientPayments)
+      && property.managerId === currentUser.id
+      && property.companyId === (currentUser?.company?.code || "");
+  }
+  return false;
+}
+
+function compareUnitNumbers(leftUnit, rightUnit) {
+  return String(leftUnit?.number || "").localeCompare(String(rightUnit?.number || ""), "ru", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function getScopedRequests() {
+  if (!isClientRole()) return dataStore.requests;
+  const clientId = getCurrentClientId();
+  return dataStore.requests.filter((request) => request.clientId === clientId);
+}
+
+function getClientPrimaryUnit() {
+  if (!isClientRole()) return null;
+  for (const property of getVisibleProperties()) {
+    const unit = getVisibleUnits(property)[0];
+    if (unit) {
+      return { property, unit };
+    }
+  }
+  return null;
+}
+
+function getClientRequestTargetUnits() {
+  return getVisibleProperties().flatMap((property) =>
+    getVisibleUnits(property).map((unit) => ({ property, unit }))
+  );
+}
+
+function getRequestTargetUnit(unitCode = '') {
+  const targets = getClientRequestTargetUnits();
+  if (!targets.length) return null;
+  if (!unitCode) return targets[0];
+  return targets.find((item) => (item.unit.code || item.unit.id) === unitCode) || targets[0];
+}
+
+function unitOwnerSummary(unit) {
+  const ownerNames = (unit?.owners || []).map((owner) => owner.name).filter(Boolean);
+  if (!ownerNames.length) return `Квартира ${unit?.number || ''}`.trim();
+  if (ownerNames.length === 1) return ownerNames[0];
+  return `${ownerNames[0]} +${ownerNames.length - 1}`;
+}
+
+
+function buildIncomingPaymentRows() {
+  return getPaymentVisibleProperties()
+    .flatMap((property) =>
+      (property.units || []).flatMap((unit) =>
+        (Array.isArray(unit.aidatPaymentLogs) ? unit.aidatPaymentLogs : []).map((payment, index) => ({
+          id: payment.id || `${property.code}-${unit.code}-payment-${index + 1}`,
+          propertyTitle: property.title,
+          propertyCode: property.code,
+          unitNumber: unit.number,
+          clientName: unitOwnerSummary(unit),
+          paymentDate: payment.receivedDate || payment.recordedAt || '',
+          recordedAt: payment.recordedAt || payment.receivedDate || '',
+          amount: Number(payment.amount || 0),
+          appliedAmount: Number(payment.appliedAmount || payment.amount || 0),
+          currency: payment.currency || property.aidatCurrencyCode || 'TRY',
+        }))
+      )
+    )
+    .sort((left, right) => String(right.recordedAt || right.paymentDate).localeCompare(String(left.recordedAt || left.paymentDate)));
+}
+
+function getRequestResidentLabel(request) {
+  return request.client || 'Собственник не указан';
+}
+
+function getRequestPreviewText(request) {
+  const text = String(request.description || request.title || '').trim();
+  if (!text) return 'Без описания';
+  return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+}
+
+function renderRequestStatusHistory(request) {
+  const items = Array.isArray(request?.statusHistory) ? request.statusHistory : [];
+  if (!items.length) {
+    return '<div class="muted-note">История статусов пока пуста.</div>';
+  }
+
+  return `
+    <div class="property-finance-log-list">
+      ${items.map((item) => `
+        <div class="finance-log-entry">
+          <strong>${formatDateTime(item.changedAt)}</strong>
+          <p>${getRequestStatusLabel(item.status)}</p>
+          <p>${item.actorName || item.actorRole || 'Система'}</p>
+          ${item.note ? `<p>${item.note}</p>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderSummary() {
+  if (!summaryStrip) return;
+
+  if (isClientRole()) {
+    const clientPrimaryUnit = getClientPrimaryUnit();
+    const scopedRequests = getScopedRequests();
+    const scopedDocuments = getScopedDocuments();
+    const myUnits = getVisibleProperties().reduce((sum, property) => sum + getVisibleUnits(property).length, 0);
+    const myAidat = clientPrimaryUnit ? getUnitAidatBalances(clientPrimaryUnit.unit) : [];
+
+    const cards = [
+      { label: 'Мои квартиры', value: myUnits },
+      { label: 'Мои заявки', value: scopedRequests.filter((request) => request.status !== 'done').length },
+      { label: 'Айдат', value: formatBalancesSummary(myAidat) },
+      { label: 'Мои документы', value: scopedDocuments.length },
+    ];
+
+    summaryStrip.innerHTML = cards.map((card, index) => `
+      <article class="summary-card" data-ui-id="summary-card-client-${index + 1}">
+        <p class="eyebrow">${card.label}</p>
+        <strong>${card.value}</strong>
+      </article>
+    `).join('');
+    return;
+  }
+
+  const visibleProperties = getVisibleProperties().filter((property) => property.status !== 'archived');
+  const scopedRequests = getScopedRequests();
+  const overdueRows = buildClientDirectoryRows().filter((row) => row.aidatVariant === 'debt');
+  const totalDebt = overdueRows.reduce((sum, row) => {
+    const match = String(row.aidatText || '').match(/(\d+[\d,.]*)/);
+    return sum + (match ? Number(String(match[1]).replace(/,/g, '')) || 0 : 0);
+  }, 0);
+
+  const cards = currentUser?.role === 'company_admin'
+    ? [
+        { label: 'Домов в обслуживании', value: visibleProperties.length },
+        { label: 'Просроченные оплаты', value: `${overdueRows.length} • ${totalDebt ? formatMoney(totalDebt, 'TRY') : 'Без задолженности'}` },
+        { label: 'Объекты в работе', value: visibleProperties.length },
+      ]
+    : currentUser?.role === 'manager'
+      ? [
+          { label: 'Клиенты', value: visibleProperties.reduce((sum, property) => sum + getVisibleUnits(property).length, 0) },
+          { label: 'Просроченные оплаты', value: `${overdueRows.length} • ${totalDebt ? formatMoney(totalDebt, 'TRY') : 'Без задолженности'}` },
+          { label: 'Объекты в работе', value: visibleProperties.length },
+        ]
+      : [
+          { label: 'Компании', value: dataStore.companies.length },
+          { label: 'Дома', value: visibleProperties.length },
+          { label: 'Клиенты', value: dataStore.clients.filter((client) => client.status === 'active').length },
+        ];
+
+  summaryStrip.innerHTML = cards.map((card, index) => `
+    <article class="summary-card" data-ui-id="summary-card-${index + 1}">
+      <p class="eyebrow">${card.label}</p>
+      <strong>${card.value}</strong>
+    </article>
+  `).join('');
+}
+
+function renderDashboard() {
+  const focusCard = document.getElementById('focus-card');
+  const requestStatusGrid = document.getElementById('request-status-grid');
+  const priorityRequests = document.getElementById('priority-requests');
+  const paymentHealth = document.getElementById('payment-health');
+  const staffLoad = document.getElementById('staff-load');
+  if (!focusCard || !requestStatusGrid || !priorityRequests || !paymentHealth || !staffLoad) return;
+
+  if (isClientRole()) {
+    const clientPrimaryUnit = getClientPrimaryUnit();
+    const scopedRequests = getScopedRequests();
+    const scopedDocuments = getScopedDocuments();
+    const clientRecord = getCurrentClientRecord();
+
+    focusCard.innerHTML = clientPrimaryUnit
+      ? `<p class="eyebrow">Мое помещение</p><h3>${clientPrimaryUnit.property.title}, квартира ${clientPrimaryUnit.unit.number}</h3><p>${clientRecord?.name || currentUser?.name || 'Клиент'} видит только свои данные.</p>`
+      : `<p class="eyebrow">Мое помещение</p><h3>Квартира пока не привязана</h3><p>Для этого клиента пока нет активной квартиры.</p>`;
+
+    requestStatusGrid.innerHTML = clientPrimaryUnit
+      ? [
+          { label: 'Дом: айдат', value: formatBalancesSummary(getPropertyAidatBalances(clientPrimaryUnit.property)) },
+          { label: 'Мой айдат', value: formatBalancesSummary(getUnitAidatBalances(clientPrimaryUnit.unit)) },
+          { label: 'Коммунальные', value: 'В разработке' },
+          { label: 'Мои заявки', value: scopedRequests.filter((request) => request.status !== 'done').length },
+        ].map((item, index) => `<article class="metric-tile" data-ui-id="metric-client-${index + 1}"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('')
+      : '<div class="empty-state">Нет привязанной квартиры.</div>';
+
+    priorityRequests.innerHTML = scopedRequests.length
+      ? scopedRequests.map((request) => `<article class="ticket-card" data-ui-id="card-client-request-${request.code}"><strong>Заявка №${request.requestNumber || '—'}</strong><p>${getRequestPreviewText(request)}</p><div class="entity-meta"><span>${getRequestStatusLabel(request.status)}</span><span>${formatDateTime(request.createdAt)}</span></div></article>`).join('')
+      : '<div class="empty-state">По вашей квартире заявок пока нет.</div>';
+
+    paymentHealth.innerHTML = clientPrimaryUnit
+      ? `<div class="stack-item"><span>Айдат</span><strong>${formatBalancesSummary(getUnitAidatBalances(clientPrimaryUnit.unit))}</strong></div>`
+      : '<div class="empty-state">Нет данных по платежам.</div>';
+
+    staffLoad.innerHTML = clientPrimaryUnit
+      ? `<div class="load-row"><div><strong>${unitOwnerSummary(clientPrimaryUnit.unit)}</strong><p>Собственник</p></div><div><p>${clientRecord?.phone || 'Телефон не указан'}</p></div></div>`
+      : '<div class="empty-state">Нет данных по собственнику.</div>';
+    return;
+  }
+
+  const visibleProperties = getVisibleProperties().filter((property) => property.status !== 'archived');
+  const visibleManagers = getScopedManagers();
+  const scopedRequests = getScopedRequests();
+  const requestBuckets = {
+    new: scopedRequests.filter((request) => request.status === 'new').length,
+    in_progress: scopedRequests.filter((request) => request.status === 'in_progress').length,
+    done: scopedRequests.filter((request) => request.status === 'done').length,
+    cancelled: scopedRequests.filter((request) => request.status === 'cancelled').length,
+  };
+
+  focusCard.innerHTML = `<p class="eyebrow">Главное</p><h3>${visibleProperties.length} домов в контуре текущего кабинета.</h3><p>Экран уже берет данные из БД по текущей роли.</p>`;
+  requestStatusGrid.innerHTML = Object.entries(requestBuckets).map(([status, count]) => `<article class="metric-tile"><span>${getRequestStatusLabel(status)}</span><strong>${count}</strong></article>`).join('');
+  priorityRequests.innerHTML = scopedRequests.length
+    ? scopedRequests.slice(0, 5).map((request) => `<article class="ticket-card"><strong>Заявка №${request.requestNumber || '—'}</strong><p>${request.property || 'Комплекс не указан'} • ${getRequestResidentLabel(request)}</p><div class="entity-meta"><span>${getRequestStatusLabel(request.status)}</span><span>${request.assignee || 'Не назначен'}</span></div></article>`).join('')
+    : '<div class="empty-state">Заявок пока нет.</div>';
+  paymentHealth.innerHTML = buildIncomingPaymentRows().slice(0, 5).map((payment) => `<div class="stack-item"><span>${payment.propertyTitle} • кв. ${payment.unitNumber}</span><strong>${formatMoney(payment.amount, payment.currency)}</strong></div>`).join('') || '<div class="empty-state">Платежей пока нет.</div>';
+  staffLoad.innerHTML = visibleManagers.length
+    ? visibleManagers.map((member) => `<div class="load-row"><div><strong>${member.name}</strong><p>${getRoleLabel(member.role)}</p></div><div><p>${member.openRequests || 0} открытых</p></div></div>`).join('')
+    : '<div class="empty-state">Менеджеров пока нет.</div>';
+}
+
+function getScopedPayments() {
+  if (!isClientRole()) return dataStore.payments;
+  const clientId = getCurrentClientId();
+  const clientName = currentUser?.name || "";
+  return dataStore.payments.filter(
+    (payment) => payment.clientId === clientId || payment.client === clientName
+  );
+}
+
+function getScopedDocuments() {
+  if (!isClientRole()) return dataStore.documents;
+  const clientId = getCurrentClientId();
+  const clientName = currentUser?.name || "";
+  return dataStore.documents.filter(
+    (documentItem) =>
+      documentItem.clientId === clientId || documentItem.client === clientName
+  );
+}
+
+function getPaymentVisibleProperties() {
+  if (isClientRole()) return getVisibleProperties();
+  if (currentUser?.role === "manager") {
+    const currentCompanyCode = currentUser?.company?.code || "";
+    return dataStore.properties.filter(
+      (property) => property.managerId === currentUser.id
+        && property.companyId === currentCompanyCode
+    );
+  }
+  return dataStore.properties;
+}
+
+function buildNetBalanceEntries(charges = [], payments = []) {
+  const balanceMap = new Map();
+
+  charges.forEach((charge) => {
+    const currency = charge.currency || "TRY";
+    const amount = Number(charge.amountDue || 0);
+    balanceMap.set(currency, (balanceMap.get(currency) || 0) + amount);
+  });
+
+  payments.forEach((payment) => {
+    const currency = payment.currency || "TRY";
+    const amount = Number(payment.amount || 0);
+    balanceMap.set(currency, (balanceMap.get(currency) || 0) - amount);
+  });
+
+  return Array.from(balanceMap.entries())
+    .map(([currency, amount]) => ({ currency, amount }))
+    .filter((item) => item.amount !== 0);
+}
+
+function getUnitAidatNetBalances(unit) {
+  const aidatCharges = Array.isArray(unit?.chargeLogs)
+    ? unit.chargeLogs.filter((charge) => charge.chargeType === "aidat")
+    : [];
+  const aidatPayments = Array.isArray(unit?.aidatPaymentLogs) ? unit.aidatPaymentLogs : [];
+  return buildNetBalanceEntries(aidatCharges, aidatPayments);
+}
+
+function getPropertyAidatNetBalances(property) {
+  return aggregateBalances((property?.units || []).map((unit) => getUnitAidatNetBalances(unit)));
+}
+
+function formatAidatNetSummary(netBalances = []) {
+  if (!netBalances.length) return "Закрыто";
+
+  const debtBalances = netBalances.filter((item) => item.amount > 0);
+  const creditBalances = netBalances.filter((item) => item.amount < 0);
+
+  if (debtBalances.length && !creditBalances.length) {
+    return `Долг ${debtBalances.map((item) => formatMoney(item.amount, item.currency)).join(" • ")}`;
+  }
+
+  if (creditBalances.length && !debtBalances.length) {
+    return `Переплата ${creditBalances
+      .map((item) => formatMoney(Math.abs(item.amount), item.currency))
+      .join(" • ")}`;
+  }
+
+  return netBalances
+    .map((item) => `${item.amount > 0 ? "Долг" : "Переплата"} ${formatMoney(Math.abs(item.amount), item.currency)}`)
+    .join(" • ");
+}
+
+function formatAidatPosition(netBalances = []) {
+  if (!netBalances.length) {
+    return { text: "Закрыто", filterText: "закрыто", variant: "neutral" };
+  }
+
+  const debtBalances = netBalances.filter((item) => item.amount > 0);
+  const creditBalances = netBalances.filter((item) => item.amount < 0);
+
+  if (debtBalances.length && !creditBalances.length) {
+    return {
+      text: `Долг ${debtBalances.map((item) => formatMoney(item.amount, item.currency)).join(" • ")}`,
+      filterText: debtBalances.map((item) => `${item.amount} ${item.currency}`).join(" "),
+      variant: "debt",
+    };
+  }
+
+  if (creditBalances.length && !debtBalances.length) {
+    return {
+      text: `Переплата ${creditBalances.map((item) => formatMoney(Math.abs(item.amount), item.currency)).join(" • ")}`,
+      filterText: creditBalances.map((item) => `${Math.abs(item.amount)} ${item.currency}`).join(" "),
+      variant: "credit",
+    };
+  }
+
+  return {
+    text: netBalances
+      .map((item) => `${item.amount > 0 ? "Долг" : "Переплата"} ${formatMoney(Math.abs(item.amount), item.currency)}`)
+      .join(" • "),
+    filterText: netBalances.map((item) => `${Math.abs(item.amount)} ${item.currency}`).join(" "),
+    variant: "mixed",
+  };
+}
+
+function buildClientDirectoryRows() {
+  return getVisibleProperties()
+    .filter((property) => property.status !== "archived")
+    .flatMap((property) =>
+      getVisibleUnits(property).flatMap((unit) => {
+        const aidatCharges = Array.isArray(unit?.chargeLogs)
+          ? unit.chargeLogs.filter((charge) => charge.chargeType === "aidat")
+          : [];
+        const aidatPayments = Array.isArray(unit?.aidatPaymentLogs) ? unit.aidatPaymentLogs : [];
+        const aidatPosition = formatAidatPosition(buildNetBalanceEntries(aidatCharges, aidatPayments));
+        const owners = Array.isArray(unit?.owners) ? unit.owners.filter((owner) => owner?.name) : [];
+
+        if (!owners.length) {
+          return [{
+            id: `${property.code}-${unit.code}-no-owner`,
+            propertyId: property.id,
+            propertyCode: property.code,
+            unitId: unit.id,
+            unitCode: unit.code,
+            ownerClientId: "",
+            complex: property.title,
+            unitNumber: String(unit.number || ""),
+            ownerDisplay: "—",
+            phone: "",
+            telegramId: "",
+            aidatText: aidatPosition.text,
+            aidatFilterText: aidatPosition.filterText,
+            aidatVariant: aidatPosition.variant,
+          }];
+        }
+
+        return owners.map((owner, index) => ({
+          id: `${property.code}-${unit.code}-${owner.clientId || index + 1}`,
+          propertyId: property.id,
+          propertyCode: property.code,
+          unitId: unit.id,
+          unitCode: unit.code,
+          ownerClientId: owner.clientId || "",
+          complex: property.title,
+          unitNumber: String(unit.number || ""),
+          ownerDisplay: owner.name || "—",
+          phone: owner.phone || "",
+          telegramId: owner.telegramId || "",
+          aidatText: aidatPosition.text,
+          aidatFilterText: aidatPosition.filterText,
+          aidatVariant: aidatPosition.variant,
+        }));
+      })
+    );
+}
+
+function getClientDirectorySortIcon(key) {
+  if (clientDirectorySort.key !== key) return "↕";
+  return clientDirectorySort.direction === "asc" ? "↑" : "↓";
+}
+
+function getClientDirectorySortLabel(key) {
+  if (clientDirectorySort.key !== key) return "Без сортировки";
+  return clientDirectorySort.direction === "asc" ? "По возрастанию" : "По убыванию";
+}
+
+function getClientDirectoryAidatSortValue(row) {
+  const lowerText = String(row.aidatText || "").toLowerCase();
+  const amountMatch = lowerText.match(/(\d+[\d,\.]*)/);
+  const amount = amountMatch ? Number(String(amountMatch[1]).replace(/,/g, "")) || 0 : 0;
+
+  if (lowerText.includes("долг")) return amount;
+  if (lowerText.includes("переплата")) return -amount;
+  return 0;
+}
+
+function sortClientDirectoryRows(rows) {
+  if (!clientDirectorySort.key) return rows;
+
+  const direction = clientDirectorySort.direction === "desc" ? -1 : 1;
+  const sortedRows = [...rows].sort((left, right) => {
+    if (clientDirectorySort.key === "unit") {
+      return String(left.unitNumber).localeCompare(String(right.unitNumber), "ru", {
+        numeric: true,
+        sensitivity: "base",
+      }) * direction;
+    }
+
+    if (clientDirectorySort.key === "aidat") {
+      return (getClientDirectoryAidatSortValue(left) - getClientDirectoryAidatSortValue(right)) * direction;
+    }
+
+    const leftValue = clientDirectorySort.key === "complex" ? left.complex : left.ownerDisplay;
+    const rightValue = clientDirectorySort.key === "complex" ? right.complex : right.ownerDisplay;
+
+    return String(leftValue).localeCompare(String(rightValue), "ru", {
+      numeric: true,
+      sensitivity: "base",
+    }) * direction;
+  });
+
+  return sortedRows;
+}
+
+function matchesSearch(value) {
+  if (!searchTerm) return true;
+  return String(value || '').toLowerCase().includes(searchTerm.toLowerCase());
+}
+
+function renderRequestFilters() {
+  if (!requestFilters) return;
+
+  const filters = [
+    { key: 'all', label: 'Все' },
+    { key: 'new', label: 'Новый' },
+    { key: 'in_progress', label: 'Принято в работу' },
+    { key: 'done', label: 'Выполнено' },
+    { key: 'cancelled', label: 'Отменено' },
+  ];
+
+  requestFilters.innerHTML = filters
+    .map(
+      (filter) => `
+        <button
+          type="button"
+          class="filter-chip ${requestStatusFilter === filter.key ? 'is-active' : ''}"
+          data-filter="${filter.key}"
+          data-ui-id="filter-request-${filter.key}"
+        >
+          ${filter.label}
+        </button>
+      `
+    )
+    .join('');
+
+  requestFilters.querySelectorAll('.filter-chip').forEach((button) => {
+    button.addEventListener('click', () => {
+      requestStatusFilter = button.dataset.filter || 'all';
+      renderRequestFilters();
+      renderRequestsTable();
+    });
+  });
+}
+
+function renderRequestsTable() {
+  const request = getRequestByCode(selectedRequestCode);
+  if (request) {
+    renderRequestDetailScreen(request);
+    return;
+  }
+
+  selectedRequestCode = null;
+  renderRequestsListScreen();
+}
+
+function getClientDirectoryRowById(rowId) {
+  if (!rowId) return null;
+  return buildClientDirectoryRows().find((row) => row.id === rowId) || null;
+}
+
+function getRequestByCode(requestCode) {
+  if (!requestCode) return null;
+  return getScopedRequests().find((request) => request.code === requestCode) || null;
+}
+
+function renderRequestStatusControl(request, canManageRequestStatus) {
+  return renderRequestStatusControlView({
+    request,
+    canManageRequestStatus,
+    statusBadge,
+  });
+}
+
+function renderRequestsListScreen() {
+  const canManageRequestStatus = ["manager", "company_admin", "project_owner"].includes(currentUser?.role);
+  const filtered = getScopedRequests().filter((request) => {
+    const filterMatch = requestStatusFilter === "all" || request.status === requestStatusFilter;
+    const textMatch = matchesSearch(
+      `#${request.requestNumber || ""} ${request.code} ${request.title} ${request.description} ${request.client} ${request.property} ${request.unitNumber || ""}`
+    );
+    return filterMatch && textMatch;
+  });
+
+  requestsTableNode.innerHTML = renderRequestsListView({
+    filtered,
+    canManageRequestStatus,
+    getRequestResidentLabel,
+    getRequestPreviewText,
+    renderRequestStatusControl,
+  });
+}
+
+function renderRequestDetailScreen(request) {
+  const canManageRequestStatus = ["manager", "company_admin", "project_owner"].includes(currentUser?.role);
+  requestsTableNode.innerHTML = renderRequestDetailView({
+    request,
+    canManageRequestStatus,
+    getRequestResidentLabel,
+    renderRequestStatusControl,
+    renderRequestStatusHistory,
+    getRequestStatusLabel,
+  });
+}
+
+function renderClientsListScreen() {
+  dataStore.clients = pruneUnboundClients(dataStore.clients, dataStore.properties);
+  persistDataStore();
+
+  const rows = buildClientDirectoryRows().filter((row) =>
+    matchesSearch(`${row.complex} ${row.unitNumber} ${row.ownerDisplay} ${row.aidatText}`)
+  );
+  const filteredRows = sortClientDirectoryRows(rows);
+
+  document.getElementById("clients-grid").innerHTML = renderClientsListView({
+    filteredRows,
+    getClientDirectorySortIcon,
+  });
+}
+
+function renderClientDetailScreen(row) {
+  const property = getPropertyByCode(row.propertyCode);
+  const unit = getUnitById(property, row.unitCode || row.unitId);
+  const owner = unit?.owners?.find((item) => (item.clientId || "") === row.ownerClientId) || null;
+  document.getElementById("clients-grid").innerHTML = renderClientDetailView({
+    row,
+    unit,
+    owner,
+  });
+}
+
+function nextManagerId() {
+  const maxValue = dataStore.staff.reduce((max, member) => {
+    const numeric = Number(String(member.id || "").replace("ST-", ""));
+    return Number.isNaN(numeric) ? max : Math.max(max, numeric);
+  }, 0);
+
+  return `ST-${String(maxValue + 1).padStart(2, "0")}`;
+}
+
+function renderManagers() {
+  if (!managersGrid) return;
+
+  const managers = dataStore.staff
+    .filter((member) => member.role === "manager")
+    .filter((member) =>
+      matchesSearch(`${member.id} ${member.name} ${member.phone || ""} ${member.status || ""}`)
+    );
+  const canManageManagers = ["project_owner", "company_admin"].includes(currentUser?.role);
+
+  const managerForm = canManageManagers
+    ? `
+      <article class="card manager-panel-card" data-ui-id="card-manager-create">
+        <div class="card-head">
+          <h4>${editingManagerId ? "Редактировать менеджера" : "Добавить менеджера"}</h4>
+          <span>${editingManagerId ? editingManagerId : "Новый сотрудник"}</span>
+        </div>
+        <form id="manager-form" class="form-grid" data-manager-form>
+          <label class="field">
+            <span>ФИО менеджера</span>
+            <input name="name" type="text" placeholder="Введите имя" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.name || "") : ""}" required />
+          </label>
+          <label class="field">
+            <span>Логин</span>
+            <input name="login" type="text" placeholder="manager.login" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.login || "") : ""}" required />
+          </label>
+          <label class="field">
+            <span>Пароль</span>
+            <input name="password" type="text" placeholder="${editingManagerId ? "Оставьте пустым, чтобы не менять" : "Введите пароль"}" ${editingManagerId ? "" : "required"} />
+          </label>
+          <label class="field">
+            <span>Телефон</span>
+            <input name="phone" type="text" placeholder="+90 555 ..." value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.phone || "") : ""}" />
+          </label>
+          <label class="field field-full manager-permission-field">
+            <span>Право на оплаты</span>
+            <label class="manager-permission-toggle">
+              <input name="canRecordClientPayments" type="checkbox" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.canRecordClientPayments) ? "checked" : "") : ""} />
+              <strong>Может вносить оплаты клиентов</strong>
+            </label>
+          </label>
+          <label class="field">
+            <span>Статус</span>
+            <select name="status">
+              <option value="active" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "active" ? "selected" : "") : "selected"}>Активен</option>
+              <option value="inactive" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "inactive" ? "selected" : "") : ""}>Неактивен</option>
+            </select>
+          </label>
+          <div class="modal-actions field-full manager-form-actions">
+            <div id="manager-form-message" class="form-message">${managerFormFeedback}</div>
+            ${editingManagerId ? '<button type="button" class="ghost-button" data-cancel-manager-edit>Отмена</button>' : ''}
+            <button type="submit" class="primary-button">${editingManagerId ? "Сохранить" : "Добавить"}</button>
+          </div>
+        </form>
+      </article>
+    `
+    : "";
+
+  const managerCards = managers.length
+    ? managers
+        .map(
+          (member) => `
+            <article class="entity-card" data-ui-id="card-manager-${member.id}">
+              <p class="eyebrow">${member.id}</p>
+              <strong>${member.name}</strong>
+              <p>Менеджер компании${member.phone ? ` • ${member.phone}` : ""}</p>
+              <div class="entity-meta">
+                <span>Логин: ${member.login || member.id}</span>
+                <span>Пароль: скрыт</span>
+              </div>
+              <div class="entity-meta">
+                <span>${member.status === "active" ? "Активен" : "Неактивен"}</span>
+                <span>${member.openRequests} открытых заявок</span>
+              </div>
+              <div class="entity-meta">
+                <span>${member.canRecordClientPayments ? "Может вносить оплаты" : "Не вносит оплаты"}</span>
+              </div>
+              ${canManageManagers ? `
+                <div class="company-card-actions manager-card-actions">
+                  <button type="button" class="ghost-button" data-edit-manager="${member.id}">Редактировать</button>
+                  <button type="button" class="ghost-button" data-delete-manager="${member.id}">Удалить</button>
+                </div>
+              ` : ""}
+            </article>
+          `
+        )
+        .join("")
+    : '<div class="empty-state">Менеджеры этой компании пока не добавлены.</div>';
+
+  managersGrid.innerHTML = `${managerForm}${managerCards}`;
+}
+
+function renderClients() {
+  const row = getClientDirectoryRowById(selectedClientRowId);
+  if (row) {
+    renderClientDetailScreen(row);
+    return;
+  }
+  selectedClientRowId = null;
+  renderClientsListScreen();
+}
+
+function renderPropertiesListScreen() {
+  const filtered = getVisibleProperties().filter((property) =>
+    matchesSearch(
+      `${property.id} ${property.title} ${property.city} ${property.district} ${property.manager}`
+    )
+  );
+  const activeProperties = filtered.filter((property) => property.status !== "archived");
+  const archivedProperties = filtered.filter((property) => property.status === "archived");
+
+  const view = renderPropertiesListView({
+    isClientRole: isClientRole(),
+    isProjectOwner: isProjectOwner(),
+    activeProperties,
+    archivedProperties,
+    formatBalancesSummary,
+    aggregateBalances,
+    getPropertyAidatBalances,
+    getPropertyUtilityBalances,
+    debtBreakdownMarkup,
+  });
+
+  propertiesBreadcrumbs.innerHTML = view.breadcrumbs;
+  propertiesOverview.innerHTML = view.overview;
+  propertiesGrid.className = view.gridClassName;
+  propertiesGrid.innerHTML = view.gridMarkup;
+}
+
+function renderPropertyDetailScreen(selectedProperty) {
+  const filteredUnits = getVisibleUnits(selectedProperty).filter((unit) =>
+    matchesSearch(
+      `${unit.number} ${unit.status} ${unit.owners.map((owner) => owner.name).join(" ")}`
+    )
+  );
+
+  const view = renderPropertyDetailView({
+    selectedProperty,
+    filteredUnits,
+    formatBalancesSummary,
+    getPropertyAidatBalances,
+    getPropertyUtilityBalances,
+    canManageProperty: canManageProperty(selectedProperty),
+    renderPropertyFinanceEditor,
+    isPropertyReportVisible,
+    renderPropertyYearReport,
+    selectedPropertyReportYear,
+    unitOwnerSummary,
+    debtBreakdownMarkup,
+    getUnitAidatBalances,
+    getUnitUtilityBalances,
+  });
+
+  propertiesBreadcrumbs.innerHTML = view.breadcrumbs;
+  propertiesOverview.innerHTML = view.overview;
+  propertiesGrid.className = view.gridClassName;
+  propertiesGrid.innerHTML = view.gridMarkup;
+}
+
+function renderUnitDetailScreen(selectedProperty, selectedUnit) {
+  const view = renderUnitDetailView({
+    selectedProperty,
+    selectedUnit,
+    formatBalancesSummary,
+    getUnitAidatBalances,
+    getUnitUtilityBalances,
+    buildUnitDetailMarkup,
+  });
+
+  propertiesBreadcrumbs.innerHTML = view.breadcrumbs;
+  propertiesOverview.innerHTML = view.overview;
+  propertiesGrid.className = view.gridClassName;
+  propertiesGrid.innerHTML = view.gridMarkup;
+}
+
+function renderProperties() {
+  let selectedProperty = getPropertyById(selectedPropertyId);
+  if (selectedProperty && !propertyBelongsToCurrentClient(selectedProperty)) {
+    selectedPropertyId = null;
+    selectedUnitId = null;
+    selectedProperty = null;
+  }
+
+  let selectedUnit = getUnitById(selectedProperty, selectedUnitId);
+  if (selectedUnit && !unitBelongsToCurrentClient(selectedUnit)) {
+    selectedUnitId = null;
+    selectedUnit = null;
+  }
+
+  addPropertyButton.hidden = !canAddProperties() || Boolean(selectedProperty || selectedUnit);
+
+  if (!selectedProperty) {
+    renderPropertiesListScreen();
+    return;
+  }
+
+  const propertyHasLoadedUnits = Array.isArray(selectedProperty.units) && selectedProperty.units.length > 0;
+  if (!selectedUnit && selectedProperty.code && !propertyHasLoadedUnits) {
+    propertiesBreadcrumbs.innerHTML = `
+      <button class="filter-chip" data-back-to-properties="true">Все объекты</button>
+      <span class="filter-chip is-active">${selectedProperty.title}</span>
+    `;
+    propertiesOverview.innerHTML = '<div class="empty-state">Загружаем помещения из базы данных...</div>';
+    propertiesGrid.className = 'unit-grid';
+    propertiesGrid.innerHTML = '<div class="empty-state">Загружаем помещения из базы данных...</div>';
+    loadPropertyDetailFromApi(selectedProperty.code)
+      .then(() => {
+        renderProperties();
+        persistNavigationState();
+      })
+      .catch(() => {
+        setApiStatus("offline");
+        propertiesGrid.innerHTML = '<div class="empty-state">Не удалось загрузить помещения из базы данных.</div>';
+      });
+    return;
+  }
+
+  if (!selectedUnit) {
+    renderPropertyDetailScreen(selectedProperty);
+    return;
+  }
+
+  renderUnitDetailScreen(selectedProperty, selectedUnit);
+}
+
+const COUNTRY_PHONE_CODES = [
+  { value: "+90", label: "+90 Turkey" },
+  { value: "+7", label: "+7 Russia / Kazakhstan" },
+  { value: "+380", label: "+380 Ukraine" },
+  { value: "+375", label: "+375 Belarus" },
+  { value: "+998", label: "+998 Uzbekistan" },
+  { value: "+996", label: "+996 Kyrgyzstan" },
+  { value: "+994", label: "+994 Azerbaijan" },
+  { value: "+995", label: "+995 Georgia" },
+  { value: "+49", label: "+49 Germany" },
+  { value: "+1", label: "+1 USA / Canada" },
+];
+
+function normalizePhoneCountryCode(value = "") {
+  const safeValue = String(value || "").trim();
+  return COUNTRY_PHONE_CODES.some((item) => item.value === safeValue) ? safeValue : "+90";
+}
+
+function normalizePhoneLocalNumber(value = "") {
+  return String(value || "").replace(/[^\d]/g, "").trim();
+}
+
+function splitPhoneParts(phone = "") {
+  const normalized = String(phone || "").replace(/[^\d+]/g, "").trim();
+  const matchedCountry = COUNTRY_PHONE_CODES.slice().sort((a, b) => b.value.length - a.value.length).find((item) => normalized.startsWith(item.value));
+  if (!normalized) return { countryCode: "+90", localNumber: "" };
+  if (!matchedCountry) return { countryCode: "+90", localNumber: normalizePhoneLocalNumber(normalized) };
+  return {
+    countryCode: matchedCountry.value,
+    localNumber: normalizePhoneLocalNumber(normalized.slice(matchedCountry.value.length)),
+  };
+}
+
+function formatPhone(countryCode = "+90", localNumber = "") {
+  const normalizedCountryCode = normalizePhoneCountryCode(countryCode);
+  const normalizedLocalNumber = normalizePhoneLocalNumber(localNumber);
+  return normalizedLocalNumber ? `${normalizedCountryCode}${normalizedLocalNumber}` : "";
+}
+
+function normalizeOwner(owner, index) {
+  const phoneParts = splitPhoneParts(owner?.phone || "");
+  return {
+    clientId: owner?.clientId || `NEW-${index + 1}`,
+    name: owner?.name || "",
+    share: owner?.share || "",
+    phone: formatPhone(phoneParts.countryCode, phoneParts.localNumber),
+    phoneCountryCode: phoneParts.countryCode,
+    phoneLocalNumber: phoneParts.localNumber,
+    telegramId: owner?.telegramId || "",
+  };
 }
 
 function getOwnerDraft(unit) {
@@ -1756,156 +2388,113 @@ function getOwnerDraft(unit) {
       ? unit.owners.map((owner, index) => normalizeOwner(owner, index))
       : [normalizeOwner(null, 0)];
   }
-
   return ownerEditorDrafts[unit.id];
 }
 
 function setOwnerDraftCount(unit, count) {
   const safeCount = Math.max(1, Math.min(6, Number(count) || 1));
-  const nextDraft = Array.from({ length: safeCount }, (_, index) =>
-    normalizeOwner(getOwnerDraft(unit)[index], index)
-  );
+  const nextDraft = Array.from({ length: safeCount }, (_, index) => normalizeOwner(getOwnerDraft(unit)[index], index));
   ownerEditorDrafts[unit.id] = nextDraft;
 }
 
-function renderOwnerEditor(unit, property) {
-  const draft = getOwnerDraft(unit);
-  const canEditTelegramId = canEditPropertyTelegramIds(property);
-  const telegramFieldHint = canEditTelegramId
-    ? "Ответственный менеджер может внести Telegram ID клиента, чтобы бот открывал именно эту квартиру."
-    : "Telegram ID виден только для просмотра. Изменять его может только ответственный менеджер этого дома.";
+function canEditPropertyTelegramIds(property) {
+  return canManageProperty(property);
+}
 
+function formatMoney(value, currency) {
+  return `${Number(value || 0).toLocaleString("en-US")} ${currency}`;
+}
+
+function aggregateBalances(items = []) {
+  const balanceMap = new Map();
+  items.forEach((item) => {
+    (item || []).forEach((balance) => {
+      const currency = balance.currency || "TRY";
+      const amount = Number(balance.amount || 0);
+      balanceMap.set(currency, (balanceMap.get(currency) || 0) + amount);
+    });
+  });
+  return Array.from(balanceMap.entries()).map(([currency, amount]) => ({ currency, amount })).filter((entry) => entry.amount > 0);
+}
+
+function getUnitBalances(unit) {
+  return normalizeBalanceEntries(unit?.balances, unit?.debt);
+}
+
+function subtractBalances(totalBalances, subtractingBalances) {
+  const resultMap = new Map();
+  normalizeBalanceEntries(totalBalances).forEach((balance) => resultMap.set(balance.currency, Number(balance.amount || 0)));
+  normalizeBalanceEntries(subtractingBalances).forEach((balance) => {
+    const current = resultMap.get(balance.currency) || 0;
+    resultMap.set(balance.currency, Math.max(0, current - Number(balance.amount || 0)));
+  });
+  return Array.from(resultMap.entries()).map(([currency, amount]) => ({ currency, amount })).filter((balance) => balance.amount > 0);
+}
+
+function getUnitAidatBalances(unit) {
+  const aidatCharges = Array.isArray(unit?.chargeLogs) ? unit.chargeLogs.filter((charge) => charge.chargeType === "aidat") : [];
+  if (!aidatCharges.length) return [];
+  const aidatMap = new Map();
+  aidatCharges.forEach((charge) => {
+    const currency = charge.currency || "TRY";
+    const outstanding = Number(charge.amountDue || 0) - Number(charge.amountPaid || 0);
+    if (outstanding <= 0) return;
+    aidatMap.set(currency, (aidatMap.get(currency) || 0) + outstanding);
+  });
+  return Array.from(aidatMap.entries()).map(([currency, amount]) => ({ currency, amount }));
+}
+
+function getUnitUtilityBalances(unit) {
+  const utilityCharges = Array.isArray(unit?.chargeLogs) ? unit.chargeLogs.filter((charge) => charge.chargeType !== "aidat") : [];
+  if (utilityCharges.length) {
+    const utilityMap = new Map();
+    utilityCharges.forEach((charge) => {
+      const currency = charge.currency || "TRY";
+      const outstanding = Number(charge.amountDue || 0) - Number(charge.amountPaid || 0);
+      if (outstanding <= 0) return;
+      utilityMap.set(currency, (utilityMap.get(currency) || 0) + outstanding);
+    });
+    return Array.from(utilityMap.entries()).map(([currency, amount]) => ({ currency, amount }));
+  }
+  return subtractBalances(getUnitBalances(unit), getUnitAidatBalances(unit));
+}
+
+function getPropertyAidatBalances(property) {
+  return aggregateBalances((property?.units || []).map((unit) => getUnitAidatBalances(unit)));
+}
+
+function getPropertyUtilityBalances(property) {
+  return aggregateBalances((property?.units || []).map((unit) => getUnitUtilityBalances(unit)));
+}
+
+function formatBalancesSummary(balances) {
+  if (!balances.length) return "Без задолженности";
+  return balances.map((balance) => formatMoney(balance.amount, balance.currency)).join(" • ");
+}
+
+function debtBreakdownMarkup(aidatBalances, utilityBalances) {
   return `
-    <article class="card" data-ui-id="card-owner-editor-${property.code}-${unit.number}">
-      <form class="owner-editor-form" data-owner-form="${unit.id}">
-        <div class="owner-editor-head">
-          <div>
-            <h4>Собственники квартиры</h4>
-            <p class="muted-note">Управляющая компания может менять состав собственников прямо в карточке помещения.</p>
-            <p class="muted-note">${telegramFieldHint}</p>
-          </div>
-          <label class="field" data-ui-id="field-owner-count-${property.code}-${unit.number}">
-            <span>Количество собственников</span>
-            <select name="ownerCount" data-owner-count-select="${unit.id}">
-              ${[1, 2, 3, 4, 5, 6]
-                .map(
-                  (value) => `<option value="${value}" ${draft.length === value ? "selected" : ""}>${value}</option>`
-                )
-                .join("")}
-            </select>
-          </label>
-        </div>
-        <div class="owner-editor-list">
-          ${draft
-            .map(
-              (owner, index) => `
-                <div class="owner-editor-row" data-ui-id="row-owner-editor-${property.code}-${unit.number}-${index + 1}">
-                  <label class="field">
-                    <span>ФИО собственника ${index + 1}</span>
-                    <input type="text" name="ownerName-${index}" value="${owner.name}" placeholder="Введите имя собственника" />
-                  </label>
-                  <label class="field">
-                    <span>Телефон</span>
-                    <input type="text" name="ownerPhone-${index}" value="${owner.phone}" placeholder="+90 ..." />
-                  </label>
-                  <label class="field">
-                    <span>Telegram ID</span>
-                    <input
-                      type="text"
-                      name="ownerTelegramId-${index}"
-                      value="${owner.telegramId || ""}"
-                      placeholder="Например, 123456789"
-                      ${canEditTelegramId ? "" : "readonly"}
-                    />
-                  </label>
-                  <label class="field">
-                    <span>Доля</span>
-                    <input type="text" name="ownerShare-${index}" value="${owner.share}" placeholder="50%" />
-                  </label>
-                </div>
-              `
-            )
-            .join("")}
-        </div>
-        <div class="owner-editor-actions">
-          <div class="form-message" data-owner-message="${unit.id}"></div>
-          <button type="submit" class="primary-button" data-ui-id="btn-save-owners-${property.code}-${unit.number}">
-            Сохранить собственников
-          </button>
-        </div>
-      </form>
-    </article>
+    <div class="debt-breakdown">
+      <span class="debt-split debt-split-aidat">Айдат: ${formatBalancesSummary(normalizeBalanceEntries(aidatBalances))}</span>
+      <span class="debt-split debt-split-utility">Коммунальные: ${formatBalancesSummary(normalizeBalanceEntries(utilityBalances))}</span>
+    </div>
   `;
 }
 
-function renderUnitProfileEditor(unit, property) {
-  return `
-    <article class="card" data-ui-id="card-unit-profile-editor-${property.code}-${unit.number}">
-      <form class="unit-profile-form" data-unit-profile-form="${unit.id}">
-        <div class="card-head">
-          <h4>Параметры квартиры</h4>
-          <span>Unit profile</span>
-        </div>
-        <div class="unit-profile-grid">
-          <label class="field" data-ui-id="field-unit-floor-${property.code}-${unit.number}">
-            <span>Этаж</span>
-            <input type="text" name="floor" value="${unit.floor}" placeholder="Например, 2" />
-          </label>
-          <label class="field" data-ui-id="field-unit-area-${property.code}-${unit.number}">
-            <span>Квадратура, м2</span>
-            <input type="number" step="0.01" min="0" name="area" value="${unit.area}" placeholder="120" />
-          </label>
-          <label class="field" data-ui-id="field-unit-layout-${property.code}-${unit.number}">
-            <span>Планировка</span>
-            <select name="layoutType">
-              <option value="" ${!unit.layoutType ? "selected" : ""}>Не выбрано</option>
-              <option value="1+1" ${unit.layoutType === "1+1" ? "selected" : ""}>1+1</option>
-              <option value="2+1" ${unit.layoutType === "2+1" ? "selected" : ""}>2+1</option>
-              <option value="3+1" ${unit.layoutType === "3+1" ? "selected" : ""}>3+1</option>
-              <option value="4+1" ${unit.layoutType === "4+1" ? "selected" : ""}>4+1</option>
-            </select>
-          </label>
-          <label class="field" data-ui-id="field-unit-layout-feature-${property.code}-${unit.number}">
-            <span>Доп. характеристика</span>
-            <select name="layoutFeature">
-              <option value="" ${!unit.layoutFeature ? "selected" : ""}>Не выбрано</option>
-              <option value="Линейная" ${unit.layoutFeature === "Линейная" ? "selected" : ""}>Линейная</option>
-              <option value="Дуплекс" ${unit.layoutFeature === "Дуплекс" ? "selected" : ""}>Дуплекс</option>
-            </select>
-          </label>
-          <label class="field" data-ui-id="field-unit-water-${property.code}-${unit.number}">
-            <span>Абонентский номер водоснабжения</span>
-            <input
-              type="text"
-              name="waterAccountNumber"
-              value="${unit.waterAccountNumber || ""}"
-              placeholder="Введите номер водоснабжения"
-            />
-          </label>
-          <label class="field" data-ui-id="field-unit-electricity-${property.code}-${unit.number}">
-            <span>Абонентский номер электричества</span>
-            <input
-              type="text"
-              name="electricityAccountNumber"
-              value="${unit.electricityAccountNumber || ""}"
-              placeholder="Введите номер электричества"
-            />
-          </label>
-        </div>
-        <div class="unit-profile-actions">
-          <div class="form-message" data-unit-profile-message="${unit.id}"></div>
-          <button type="submit" class="primary-button" data-ui-id="btn-save-unit-profile-${property.code}-${unit.number}">
-            Сохранить параметры квартиры
-          </button>
-        </div>
-      </form>
-    </article>
-  `;
-}
-
-function aidatModeLabel(value) {
-  if (value === "by_unit_area") return "По размерам квартиры";
-  return "Равный для всех";
+function formatChargeDate(value) {
+  if (!value) return "дата не указана";
+  if (/^\d{4}-\d{2}$/.test(String(value))) {
+    const [year, month] = String(value).split("-");
+    const date = new Date(Number(year), Number(month) - 1, 1);
+    return date.toLocaleDateString("ru-RU", { year: "numeric", month: "long" });
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+    }
+  }
+  return String(value);
 }
 
 function toMonthInputValue(value) {
@@ -1929,29 +2518,19 @@ function formatMonthYear(value) {
   const [year, month] = monthValue.split("-");
   const date = new Date(Number(year), Number(month) - 1, 1);
   if (Number.isNaN(date.getTime())) return monthValue;
-  return date.toLocaleDateString("ru-RU", {
-    year: "numeric",
-    month: "long",
-  });
+  return date.toLocaleDateString("ru-RU", { year: "numeric", month: "long" });
 }
 
 function formatDateTime(value) {
   if (!value) return "дата не указана";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ru-RU", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return date.toLocaleString("ru-RU", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 function monthOptions(selectedValue = "") {
   const selectedMonth = toMonthInputValue(selectedValue).split("-")[1] || "";
   const formatter = new Intl.DateTimeFormat("ru-RU", { month: "long" });
-
   return Array.from({ length: 12 }, (_, index) => {
     const monthNumber = String(index + 1).padStart(2, "0");
     const monthLabel = formatter.format(new Date(2026, index, 1));
@@ -1965,226 +2544,17 @@ function yearOptions(selectedValue = "") {
   const startYear = currentYear - 2;
   const endYear = currentYear + 5;
   const options = [];
-
   for (let year = startYear; year <= endYear; year += 1) {
-    options.push(
-      `<option value="${year}" ${String(year) === selectedYear ? "selected" : ""}>${year}</option>`
-    );
+    options.push(`<option value="${year}" ${String(year) === selectedYear ? "selected" : ""}>${year}</option>`);
   }
-
   return options.join("");
-}
-
-function buildAidatLogMessage(propertyTitle, financeSettings) {
-  const monthLabel = formatMonthYear(financeSettings.aidatStartDate);
-  if (financeSettings.aidatCalculationMode === "equal_for_all") {
-    const amount = financeSettings.aidatFixedAmount || 0;
-    const currency = financeSettings.aidatCurrencyCode || "TRY";
-    return `С ${monthLabel} всем квартирам начисляется ежемесячный айдат ${amount} ${currency}.`;
-  }
-
-  return `С ${monthLabel} всем квартирам начисляется ежемесячный айдат по размерам квартиры.`;
-}
-
-function renderPropertyFinanceEditor(property) {
-  return `
-    <article class="card" data-ui-id="card-property-finance-${property.code}">
-      <form class="property-finance-form" data-property-finance-form="${property.id}">
-        <div class="card-head">
-          <h4>Финансы</h4>
-          <span>Настройки дома</span>
-        </div>
-        <div class="property-finance-grid">
-          <label class="field" data-ui-id="field-property-aidat-mode-${property.code}">
-            <span>Айдат</span>
-            <select name="aidatCalculationMode" data-aidat-mode-select="${property.id}">
-              <option value="equal_for_all" ${property.aidatCalculationMode === "equal_for_all" ? "selected" : ""}>Равный для всех</option>
-              <option value="by_unit_area" ${property.aidatCalculationMode === "by_unit_area" ? "selected" : ""}>По размерам квартиры</option>
-            </select>
-          </label>
-          <label class="field" data-ui-id="field-property-aidat-start-${property.code}">
-            <span>Начало учета, месяц и год</span>
-            <div class="month-year-grid">
-              <select name="aidatStartMonth">
-                ${monthOptions(property.aidatStartDate)}
-              </select>
-              <select name="aidatStartYear">
-                ${yearOptions(property.aidatStartDate)}
-              </select>
-            </div>
-          </label>
-          <label
-            class="field property-finance-fixed-field ${property.aidatCalculationMode !== "equal_for_all" ? "is-hidden" : ""}"
-            data-aidat-fixed-field="amount"
-            data-ui-id="field-property-aidat-amount-${property.code}"
-          >
-            <span>Сумма</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              name="aidatFixedAmount"
-              value="${property.aidatFixedAmount}"
-              placeholder="Введите сумму айдата"
-            />
-          </label>
-          <label
-            class="field property-finance-fixed-field ${property.aidatCalculationMode !== "equal_for_all" ? "is-hidden" : ""}"
-            data-aidat-fixed-field="currency"
-            data-ui-id="field-property-aidat-currency-${property.code}"
-          >
-            <span>Валюта</span>
-            <select name="aidatCurrencyCode">
-              <option value="TRY" ${property.aidatCurrencyCode === "TRY" ? "selected" : ""}>Лира</option>
-              <option value="EUR" ${property.aidatCurrencyCode === "EUR" ? "selected" : ""}>Евро</option>
-              <option value="USD" ${property.aidatCurrencyCode === "USD" ? "selected" : ""}>Доллар</option>
-            </select>
-          </label>
-        </div>
-        <div class="property-finance-actions">
-          <div class="form-message" data-property-finance-message="${property.id}"></div>
-          <button
-            type="button"
-            class="ghost-button"
-            data-open-property-report="${property.id}"
-          >
-            Отчет по дому
-          </button>
-          <button
-            type="button"
-            class="primary-button"
-            data-add-aidat="${property.id}"
-            data-ui-id="btn-save-property-finance-${property.code}"
-          >
-            Добавить Айдат
-          </button>
-        </div>
-        <div class="property-finance-log-list">
-          ${
-            property.financeLogs?.length
-              ? property.financeLogs
-                  .map(
-                    (logItem) => `
-                      <div class="finance-log-entry">
-                        <strong>${formatDateTime(logItem.createdAt)}</strong>
-                        <p>${logItem.message}</p>
-                      </div>
-                    `
-                  )
-                  .join("")
-              : '<div class="muted-note">История изменений айдата пока пуста.</div>'
-          }
-        </div>
-      </form>
-    </article>
-  `;
-}
-
-function aggregateBalances(items = []) {
-  const balanceMap = new Map();
-
-  items.forEach((item) => {
-    (item || []).forEach((balance) => {
-      const currency = balance.currency || "TRY";
-      const amount = Number(balance.amount || 0);
-      balanceMap.set(currency, (balanceMap.get(currency) || 0) + amount);
-    });
-  });
-
-  return Array.from(balanceMap.entries()).map(([currency, amount]) => ({
-    currency,
-    amount,
-  }));
-}
-
-function getUnitBalances(unit) {
-  return normalizeBalanceEntries(unit?.balances, unit?.debt);
-}
-
-function getPropertyBalances(property) {
-  const ownBalances = normalizeBalanceEntries(property?.totalBalances);
-  if (ownBalances.length) return ownBalances;
-  return aggregateBalances((property?.units || []).map((unit) => getUnitBalances(unit)));
-}
-
-function getUnitAidatBalances(unit) {
-  const aidatCharges = Array.isArray(unit?.chargeLogs)
-    ? unit.chargeLogs.filter((charge) => charge.chargeType === "aidat")
-    : [];
-
-  if (aidatCharges.length) {
-    const aidatMap = new Map();
-    aidatCharges.forEach((charge) => {
-      const currency = charge.currency || "TRY";
-      const outstanding = Number(charge.amountDue || 0) - Number(charge.amountPaid || 0);
-      if (outstanding <= 0) return;
-      aidatMap.set(currency, (aidatMap.get(currency) || 0) + outstanding);
-    });
-
-    return Array.from(aidatMap.entries()).map(([currency, amount]) => ({
-      currency,
-      amount,
-    }));
-  }
-
-  return [];
-}
-
-function subtractBalances(totalBalances, subtractingBalances) {
-  const resultMap = new Map();
-
-  normalizeBalanceEntries(totalBalances).forEach((balance) => {
-    resultMap.set(balance.currency, Number(balance.amount || 0));
-  });
-
-  normalizeBalanceEntries(subtractingBalances).forEach((balance) => {
-    const current = resultMap.get(balance.currency) || 0;
-    resultMap.set(balance.currency, Math.max(0, current - Number(balance.amount || 0)));
-  });
-
-  return Array.from(resultMap.entries())
-    .map(([currency, amount]) => ({ currency, amount }))
-    .filter((balance) => balance.amount > 0);
-}
-
-function getUnitUtilityBalances(unit) {
-  const utilityCharges = Array.isArray(unit?.chargeLogs)
-    ? unit.chargeLogs.filter((charge) => charge.chargeType !== "aidat")
-    : [];
-
-  if (utilityCharges.length) {
-    const utilityMap = new Map();
-    utilityCharges.forEach((charge) => {
-      const currency = charge.currency || "TRY";
-      const outstanding = Number(charge.amountDue || 0) - Number(charge.amountPaid || 0);
-      if (outstanding <= 0) return;
-      utilityMap.set(currency, (utilityMap.get(currency) || 0) + outstanding);
-    });
-
-    return Array.from(utilityMap.entries()).map(([currency, amount]) => ({
-      currency,
-      amount,
-    }));
-  }
-
-  return subtractBalances(getUnitBalances(unit), getUnitAidatBalances(unit));
-}
-
-function getPropertyAidatBalances(property) {
-  return aggregateBalances((property?.units || []).map((unit) => getUnitAidatBalances(unit)));
-}
-
-function getPropertyUtilityBalances(property) {
-  return aggregateBalances((property?.units || []).map((unit) => getUnitUtilityBalances(unit)));
 }
 
 function reportYearOptions(selectedYear = new Date().getFullYear()) {
   const currentYear = new Date().getFullYear();
   const years = [];
   for (let year = currentYear - 2; year <= currentYear + 1; year += 1) {
-    years.push(
-      `<option value="${year}" ${Number(selectedYear) === year ? "selected" : ""}>${year}</option>`
-    );
+    years.push(`<option value="${year}" ${Number(selectedYear) === year ? "selected" : ""}>${year}</option>`);
   }
   return years.join("");
 }
@@ -2194,14 +2564,7 @@ function reportMonthLabels() {
 }
 
 function buildUnitAidatYearReport(unit, property, year, defaultCurrency = "TRY") {
-  const months = Array.from({ length: 12 }, (_, monthIndex) => ({
-    monthIndex,
-    due: 0,
-    applied: 0,
-    credit: 0,
-    currency: defaultCurrency,
-  }));
-
+  const months = Array.from({ length: 12 }, (_, monthIndex) => ({ monthIndex, due: 0, applied: 0, credit: 0, currency: defaultCurrency }));
   (Array.isArray(unit?.chargeLogs) ? unit.chargeLogs : []).forEach((charge) => {
     if (charge.chargeType !== "aidat") return;
     const monthKey = charge.period || toMonthInputValue(charge.chargeDate || "");
@@ -2212,77 +2575,6 @@ function buildUnitAidatYearReport(unit, property, year, defaultCurrency = "TRY")
     months[monthIndex].applied += Number(charge.amountPaid || 0);
     months[monthIndex].currency = charge.currency || months[monthIndex].currency;
   });
-
-  if (property?.aidatCalculationMode === "equal_for_all") {
-    const startMonth = toMonthInputValue(property.aidatStartDate || "");
-    const amount = Number(property.aidatFixedAmount || 0);
-    const currency = property.aidatCurrencyCode || defaultCurrency;
-
-    if (startMonth && amount > 0) {
-      const startYear = Number(startMonth.slice(0, 4));
-      const startMonthIndex = Number(startMonth.slice(5, 7)) - 1;
-
-      months.forEach((month) => {
-        if (year < startYear) return;
-        if (year === startYear && month.monthIndex < startMonthIndex) return;
-        const currentDate = new Date();
-        if (year > currentDate.getFullYear()) return;
-        if (year === currentDate.getFullYear() && month.monthIndex > currentDate.getMonth()) return;
-        if (Number(month.due || 0) <= 0) {
-          month.due = amount;
-        }
-        month.currency = currency;
-      });
-    }
-  }
-
-  const chargeAppliedTotal = months.reduce(
-    (sum, month) => sum + Number(month.applied || 0),
-    0
-  );
-  const paymentTotal = (Array.isArray(unit?.aidatPaymentLogs) ? unit.aidatPaymentLogs : [])
-    .filter((entry) => {
-      const paymentDate = entry?.receivedDate || entry?.recordedAt || "";
-      return String(paymentDate).startsWith(`${year}-`);
-    })
-    .reduce((sum, entry) => sum + Number(entry?.amount || 0), 0);
-
-  let carryover = Math.max(0, paymentTotal - chargeAppliedTotal);
-  if (carryover > 0) {
-    months.forEach((month) => {
-      if (carryover <= 0) return;
-      const outstanding = Math.max(
-        0,
-        Number(month.due || 0) - Number(month.applied || 0)
-      );
-      if (outstanding <= 0) return;
-      const applied = Math.min(outstanding, carryover);
-      month.applied += applied;
-      carryover -= applied;
-    });
-  }
-
-  if (carryover > 0) {
-    const currentDate = new Date();
-    const currentMonthIndex =
-      year < currentDate.getFullYear()
-        ? 11
-        : year > currentDate.getFullYear()
-          ? -1
-          : currentDate.getMonth();
-    const fixedAmount = Number(property?.aidatFixedAmount || 0);
-    const bucketAmount = fixedAmount > 0 ? fixedAmount : carryover;
-    let targetMonthIndex = Math.min(currentMonthIndex + 1, 11);
-
-    while (carryover > 0 && targetMonthIndex >= 0 && targetMonthIndex < 12) {
-      const creditPortion = Math.min(bucketAmount, carryover);
-      months[targetMonthIndex].credit += creditPortion;
-      months[targetMonthIndex].currency = property?.aidatCurrencyCode || months[targetMonthIndex].currency;
-      carryover -= creditPortion;
-      targetMonthIndex += 1;
-    }
-  }
-
   return months;
 }
 
@@ -2292,50 +2584,19 @@ function renderPropertyReportCell(value) {
   const credit = Number(value?.credit || 0);
   const currency = value?.currency || "TRY";
   const net = due - applied;
-
-  if (due <= 0 && applied <= 0 && credit <= 0) {
-    return '<span class="report-money report-money-empty">—</span>';
-  }
-
+  if (due <= 0 && applied <= 0 && credit <= 0) return '<span class="report-money report-money-empty">—</span>';
   if (credit > 0 && due <= 0 && applied <= 0) {
-    return [
-      '<span class="report-money report-money-positive">Аванс</span>',
-      `<span class="report-money-sub report-money-overpayment">+${formatMoney(credit, currency)}</span>`,
-    ].join("");
+    return ['<span class="report-money report-money-positive">Аванс</span>', `<span class="report-money-sub report-money-overpayment">+${formatMoney(credit, currency)}</span>`].join("");
   }
-
   if (net > 0) {
-    return [
-      `<span class="report-money report-money-negative">-${formatMoney(net, currency)}</span>`,
-      `<span class="report-money-sub">Нач. ${formatMoney(due, currency)}</span>`,
-      `<span class="report-money-sub">Опл. ${formatMoney(applied, currency)}</span>`,
-    ].join("");
+    return [`<span class="report-money report-money-negative">-${formatMoney(net, currency)}</span>`, `<span class="report-money-sub">Нач. ${formatMoney(due, currency)}</span>`, `<span class="report-money-sub">Опл. ${formatMoney(applied, currency)}</span>`].join("");
   }
-
-  const parts = [
-    `<span class="report-money report-money-positive">${formatMoney(0, currency)}</span>`,
-    `<span class="report-money-sub">Нач. ${formatMoney(due, currency)}</span>`,
-    `<span class="report-money-sub">Опл. ${formatMoney(applied, currency)}</span>`,
-  ];
-
-  if (credit > 0) {
-    parts.push(
-      `<span class="report-money-sub report-money-overpayment">Аванс +${formatMoney(credit, currency)}</span>`
-    );
-  }
-
-  return parts.join("");
+  return [`<span class="report-money report-money-positive">${formatMoney(0, currency)}</span>`, `<span class="report-money-sub">Нач. ${formatMoney(due, currency)}</span>`, `<span class="report-money-sub">Опл. ${formatMoney(applied, currency)}</span>`].join("");
 }
 
 function renderPropertyYearReport(property, units, year) {
   const months = reportMonthLabels();
-  const totalByMonth = Array.from({ length: 12 }, () => ({
-    due: 0,
-    applied: 0,
-    credit: 0,
-    currency: property.aidatCurrencyCode || "TRY",
-  }));
-
+  const totalByMonth = Array.from({ length: 12 }, () => ({ due: 0, applied: 0, credit: 0, currency: property.aidatCurrencyCode || "TRY" }));
   return `
     <article class="card property-year-report-card">
       <div class="card-head">
@@ -2345,259 +2606,179 @@ function renderPropertyYearReport(property, units, year) {
       <div class="property-year-report-toolbar">
         <label class="field property-year-select">
           <span>Год</span>
-          <select data-property-report-year="${property.id}">
-            ${reportYearOptions(year)}
-          </select>
+          <select data-property-report-year="${property.id}">${reportYearOptions(year)}</select>
         </label>
       </div>
       <div class="table-wrap">
         <table class="property-year-report-table">
-          <thead>
-            <tr>
-              <th>Кв.</th>
-              <th>ФИО</th>
-              ${months.map((month) => `<th>${month}</th>`).join("")}
-              <th>Итого</th>
-              <th></th>
-            </tr>
-          </thead>
+          <thead><tr><th>Кв.</th><th>ФИО</th>${months.map((month) => `<th>${month}</th>`).join("")}<th>Итого</th><th></th></tr></thead>
           <tbody>
-            ${
-              units.length
-                ? units
-                    .map((unit) => {
-                      const unitYear = buildUnitAidatYearReport(unit, property, year, property.aidatCurrencyCode || "TRY");
-                      const monthCells = unitYear.map((value, monthIndex) => {
-                        totalByMonth[monthIndex].due += value.due;
-                        totalByMonth[monthIndex].applied += value.applied;
-                        totalByMonth[monthIndex].credit += Number(value.credit || 0);
-                        if (value.currency) totalByMonth[monthIndex].currency = value.currency;
-                        return `<td>${renderPropertyReportCell(value)}</td>`;
-                      }).join("");
-                      const yearly = unitYear.reduce(
-                        (sum, value) => ({
-                          due: sum.due + value.due,
-                          applied: sum.applied + value.applied,
-                          credit: sum.credit + Number(value.credit || 0),
-                          currency: value.currency || sum.currency,
-                        }),
-                        {
-                          due: 0,
-                          applied: 0,
-                          credit: 0,
-                          currency: property.aidatCurrencyCode || "TRY",
-                        }
-                      );
-
-                      return `
-                        <tr>
-                          <td><strong>${unit.number}</strong></td>
-                          <td class="report-owner-name">${unitOwnerSummary(unit)}</td>
-                          ${monthCells}
-                          <td>${renderPropertyReportCell(yearly)}</td>
-                          <td>
-                            <button class="ghost-button inline-button" data-report-open-unit="${unit.id}">
-                              Открыть
-                            </button>
-                          </td>
-                        </tr>
-                      `;
-                    })
-                    .join("")
-                : `<tr><td colspan="16"><div class="muted-note">Нет данных для отчета.</div></td></tr>`
-            }
+            ${units.length ? units.map((unit) => {
+              const unitYear = buildUnitAidatYearReport(unit, property, year, property.aidatCurrencyCode || "TRY");
+              const monthCells = unitYear.map((value, monthIndex) => {
+                totalByMonth[monthIndex].due += value.due;
+                totalByMonth[monthIndex].applied += value.applied;
+                totalByMonth[monthIndex].credit += Number(value.credit || 0);
+                if (value.currency) totalByMonth[monthIndex].currency = value.currency;
+                return `<td>${renderPropertyReportCell(value)}</td>`;
+              }).join("");
+              const yearly = unitYear.reduce((sum, value) => ({ due: sum.due + value.due, applied: sum.applied + value.applied, credit: sum.credit + Number(value.credit || 0), currency: value.currency || sum.currency }), { due: 0, applied: 0, credit: 0, currency: property.aidatCurrencyCode || "TRY" });
+              return `<tr><td><strong>${unit.number}</strong></td><td class="report-owner-name">${unitOwnerSummary(unit)}</td>${monthCells}<td>${renderPropertyReportCell(yearly)}</td><td><button class="ghost-button inline-button" data-report-open-unit="${unit.id}">Открыть</button></td></tr>`;
+            }).join("") : `<tr><td colspan="16"><div class="muted-note">Нет данных для отчета.</div></td></tr>`}
           </tbody>
-          <tfoot>
-            <tr>
-              <th colspan="2">Итого по дому</th>
-              ${totalByMonth.map((value) => `<th>${renderPropertyReportCell(value)}</th>`).join("")}
-              <th>${renderPropertyReportCell(totalByMonth.reduce((sum, value) => ({
-                due: sum.due + value.due,
-                applied: sum.applied + value.applied,
-                credit: sum.credit + Number(value.credit || 0),
-                currency: value.currency || sum.currency,
-              }), {
-                due: 0,
-                applied: 0,
-                credit: 0,
-                currency: property.aidatCurrencyCode || "TRY",
-              }))}</th>
-              <th></th>
-            </tr>
-          </tfoot>
         </table>
       </div>
     </article>
   `;
 }
 
-function totalUnitsCount() {
-  return dataStore.properties.reduce(
-    (sum, property) => sum + property.units.length,
-    0
-  );
-}
-
-function totalUnitsDebt() {
-  return aggregateBalances(dataStore.properties.map((property) => getPropertyBalances(property)));
-}
-
-function formatBalancesSummary(balances) {
-  if (!balances.length) return "Без задолженности";
-  return balances.map((balance) => formatMoney(balance.amount, balance.currency)).join(" • ");
-}
-
-function debtBreakdownMarkup(aidatBalances, utilityBalances) {
+function renderPropertyFinanceEditor(property) {
   return `
-    <div class="debt-breakdown">
-      <span class="debt-split debt-split-aidat">Айдат: ${formatBalancesSummary(normalizeBalanceEntries(aidatBalances))}</span>
-      <span class="debt-split debt-split-utility">Коммунальные: ${formatBalancesSummary(normalizeBalanceEntries(utilityBalances))}</span>
+    <article class="card" data-ui-id="card-property-finance-${property.code}">
+      <form class="property-finance-form" data-property-finance-form="${property.id}">
+        <div class="card-head"><h4>Финансы</h4><span>Настройки дома</span></div>
+        <div class="property-finance-grid">
+          <label class="field"><span>Айдат</span><select name="aidatCalculationMode" data-aidat-mode-select="${property.id}"><option value="equal_for_all" ${property.aidatCalculationMode === "equal_for_all" ? "selected" : ""}>Равный для всех</option><option value="by_unit_area" ${property.aidatCalculationMode === "by_unit_area" ? "selected" : ""}>По размерам квартиры</option></select></label>
+          <label class="field"><span>Начало учета, месяц и год</span><div class="month-year-grid"><select name="aidatStartMonth">${monthOptions(property.aidatStartDate)}</select><select name="aidatStartYear">${yearOptions(property.aidatStartDate)}</select></div></label>
+          <label class="field property-finance-fixed-field ${property.aidatCalculationMode !== "equal_for_all" ? "is-hidden" : ""}" data-aidat-fixed-field="amount"><span>Сумма</span><input type="number" step="0.01" min="0" name="aidatFixedAmount" value="${property.aidatFixedAmount || ""}" placeholder="Введите сумму айдата" /></label>
+          <label class="field property-finance-fixed-field ${property.aidatCalculationMode !== "equal_for_all" ? "is-hidden" : ""}" data-aidat-fixed-field="currency"><span>Валюта</span><select name="aidatCurrencyCode"><option value="TRY" ${property.aidatCurrencyCode === "TRY" ? "selected" : ""}>Лира</option><option value="EUR" ${property.aidatCurrencyCode === "EUR" ? "selected" : ""}>Евро</option><option value="USD" ${property.aidatCurrencyCode === "USD" ? "selected" : ""}>Доллар</option></select></label>
+        </div>
+        <div class="property-finance-actions"><div class="form-message" data-property-finance-message="${property.id}"></div><button type="button" class="ghost-button" data-open-property-report="${property.id}">Отчет по дому</button><button type="button" class="primary-button" data-add-aidat="${property.id}" data-ui-id="btn-save-property-finance-${property.code}">Добавить Айдат</button></div>
+        <div class="property-finance-log-list">${property.financeLogs?.length ? property.financeLogs.map((logItem) => `<div class="finance-log-entry"><strong>${formatDateTime(logItem.createdAt)}</strong><p>${logItem.message}</p></div>`).join("") : '<div class="muted-note">История изменений айдата пока пуста.</div>'}</div>
+      </form>
+    </article>
+  `;
+}
+
+function renderUnitEditModalFields(unit, property) {
+  const draft = getOwnerDraft(unit);
+  const canEditTelegramId = canEditPropertyTelegramIds(property);
+  return `
+    <div class="unit-edit-layout">
+      <section class="unit-edit-section">
+        <div class="unit-edit-section-head">
+          <div>
+            <p class="eyebrow">Просмотр</p>
+            <h4>Параметры квартиры</h4>
+          </div>
+        </div>
+        <div class="unit-profile-grid">
+          <label class="field"><span>Этаж</span><input type="text" name="floor" value="${unit.floor}" placeholder="Например, 2" /></label>
+          <label class="field"><span>Квадратура, м2</span><input type="number" step="0.01" min="0" name="area" value="${unit.area}" placeholder="120" /></label>
+          <label class="field"><span>Планировка</span><select name="layoutType"><option value="" ${!unit.layoutType ? "selected" : ""}>Не выбрано</option><option value="1+1" ${unit.layoutType === "1+1" ? "selected" : ""}>1+1</option><option value="2+1" ${unit.layoutType === "2+1" ? "selected" : ""}>2+1</option><option value="3+1" ${unit.layoutType === "3+1" ? "selected" : ""}>3+1</option><option value="4+1" ${unit.layoutType === "4+1" ? "selected" : ""}>4+1</option></select></label>
+          <label class="field"><span>Доп. характеристика</span><select name="layoutFeature"><option value="" ${!unit.layoutFeature ? "selected" : ""}>Не выбрано</option><option value="Линейная" ${unit.layoutFeature === "Линейная" ? "selected" : ""}>Линейная</option><option value="Дуплекс" ${unit.layoutFeature === "Дуплекс" ? "selected" : ""}>Дуплекс</option></select></label>
+          <label class="field"><span>Абонентский номер водоснабжения</span><input type="text" name="waterAccountNumber" value="${unit.waterAccountNumber || ""}" placeholder="Введите номер водоснабжения" /></label>
+          <label class="field"><span>Абонентский номер электричества</span><input type="text" name="electricityAccountNumber" value="${unit.electricityAccountNumber || ""}" placeholder="Введите номер электричества" /></label>
+        </div>
+      </section>
+      <section class="unit-edit-section">
+        <div class="unit-edit-section-head">
+          <div>
+            <p class="eyebrow">Собственники</p>
+            <h4>Собственники квартиры</h4>
+          </div>
+          <label class="field unit-edit-owner-count">
+            <span>Количество собственников</span>
+            <select name="ownerCount" data-unit-edit-owner-count="${unit.id}">${[1,2,3,4,5,6].map((value) => `<option value="${value}" ${draft.length === value ? "selected" : ""}>${value}</option>`).join("")}</select>
+          </label>
+        </div>
+        <div class="owner-editor-list">
+          ${draft.map((owner, index) => `
+            <div class="owner-editor-row">
+              <label class="field"><span>ФИО собственника ${index + 1}</span><input type="text" name="ownerName-${index}" value="${owner.name}" placeholder="Введите имя собственника" /></label>
+              <label class="field"><span>Код страны</span><select name="ownerPhoneCountry-${index}">${COUNTRY_PHONE_CODES.map((item) => `<option value="${item.value}" ${owner.phoneCountryCode === item.value ? "selected" : ""}>${item.label}</option>`).join("")}</select></label>
+              <label class="field"><span>Телефон</span><input type="text" data-owner-phone-local name="ownerPhoneLocal-${index}" value="${owner.phoneLocalNumber}" placeholder="Только цифры" /></label>
+              <label class="field"><span>Telegram ID</span><input type="text" name="ownerTelegramId-${index}" value="${owner.telegramId || ""}" placeholder="Например, 123456789" ${canEditTelegramId ? "" : "readonly"} /></label>
+              <label class="field"><span>Доля</span><input type="text" name="ownerShare-${index}" value="${owner.share}" placeholder="50%" /></label>
+            </div>
+          `).join("")}
+        </div>
+      </section>
     </div>
   `;
 }
 
-function debtFlag(balanceInput) {
-  const balances = Array.isArray(balanceInput)
-    ? normalizeBalanceEntries(balanceInput)
-    : normalizeBalanceEntries([], balanceInput);
-
-  return balances.length
-    ? `<span class="debt-flag has-debt">Долг ${formatBalancesSummary(balances)}</span>`
-    : '<span class="debt-flag no-debt">Без задолженности</span>';
+function openUnitEditModal(property, unit) {
+  if (!unitEditModal || !unitEditFields || !unitEditTitle) return;
+  pendingUnitEditUnitId = unit.id;
+  unitEditTitle.textContent = `Редактировать помещение ${unit.number}`;
+  unitEditFields.innerHTML = renderUnitEditModalFields(unit, property);
+  unitEditMessage.textContent = "";
+  unitEditModal.classList.remove("is-hidden");
+  unitEditModal.setAttribute("aria-hidden", "false");
 }
 
-function formatMoney(value, currency) {
-  return `${value.toLocaleString("en-US")} ${currency}`;
+function closeUnitEditModal() {
+  pendingUnitEditUnitId = null;
+  if (!unitEditModal) return;
+  unitEditModal.classList.add("is-hidden");
+  unitEditModal.setAttribute("aria-hidden", "true");
+  if (unitEditFields) unitEditFields.innerHTML = "";
+  if (unitEditMessage) unitEditMessage.textContent = "";
 }
 
-function formatChargeDate(value) {
-  if (!value) return "дата не указана";
-  if (/^\d{4}-\d{2}$/.test(String(value))) {
-    return `1 ${formatMonthYear(value)}`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
-    const date = new Date(value);
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleDateString("ru-RU", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    }
-  }
-  return String(value);
+function renderOwnerEditor(unit, property) {
+  const draft = getOwnerDraft(unit);
+  const canEditTelegramId = canEditPropertyTelegramIds(property);
+  return `
+    <article class="card" data-ui-id="card-owner-editor-${property.code}-${unit.number}">
+      <form class="owner-editor-form" data-owner-form="${unit.id}">
+        <div class="owner-editor-head">
+          <div><h4>Собственники квартиры</h4><p class="muted-note">Управляющая компания может менять состав собственников прямо в карточке помещения.</p></div>
+          <label class="field"><span>Количество собственников</span><select name="ownerCount" data-owner-count-select="${unit.id}">${[1,2,3,4,5,6].map((value) => `<option value="${value}" ${draft.length === value ? "selected" : ""}>${value}</option>`).join("")}</select></label>
+        </div>
+        <div class="owner-editor-list">
+          ${draft.map((owner, index) => `
+            <div class="owner-editor-row" data-ui-id="row-owner-editor-${property.code}-${unit.number}-${index + 1}">
+              <label class="field"><span>ФИО собственника ${index + 1}</span><input type="text" name="ownerName-${index}" value="${owner.name}" placeholder="Введите имя собственника" /></label>
+              <label class="field"><span>Код страны</span><select name="ownerPhoneCountry-${index}">${COUNTRY_PHONE_CODES.map((item) => `<option value="${item.value}" ${owner.phoneCountryCode === item.value ? "selected" : ""}>${item.label}</option>`).join("")}</select></label>
+              <label class="field"><span>Телефон</span><input type="text" data-owner-phone-local name="ownerPhoneLocal-${index}" value="${owner.phoneLocalNumber}" placeholder="Только цифры" /></label>
+              <label class="field"><span>Telegram ID</span><input type="text" name="ownerTelegramId-${index}" value="${owner.telegramId || ""}" placeholder="Например, 123456789" ${canEditTelegramId ? "" : "readonly"} /></label>
+              <label class="field"><span>Доля</span><input type="text" name="ownerShare-${index}" value="${owner.share}" placeholder="50%" /></label>
+            </div>`).join("")}
+        </div>
+        <div class="owner-editor-actions"><div class="form-message" data-owner-message="${unit.id}"></div><button type="submit" class="primary-button" data-ui-id="btn-save-owners-${property.code}-${unit.number}">Сохранить собственников</button></div>
+      </form>
+    </article>
+  `;
 }
 
-function monthRangeFromStoredDate(value) {
-  const normalized = toMonthInputValue(value);
-  if (!normalized) return [];
-  const [year, month] = normalized.split("-").map(Number);
-  const start = new Date(year, month - 1, 1);
-  const end = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  const months = [];
-  const cursor = new Date(start);
-
-  while (cursor <= end) {
-    months.push(new Date(cursor));
-    cursor.setMonth(cursor.getMonth() + 1);
-  }
-
-  return months;
+function renderUnitProfileEditor(unit, property) {
+  const isEditing = editingUnitProfileId === unit.id;
+  return `
+    <article class="card" data-ui-id="card-unit-profile-editor-${property.code}-${unit.number}">
+      <form class="unit-profile-form" data-unit-profile-form="${unit.id}">
+        <div class="card-head"><h4>Параметры квартиры</h4><span>Unit profile</span></div>
+        <div class="unit-profile-grid">
+          <label class="field"><span>Этаж</span><input type="text" name="floor" value="${unit.floor}" placeholder="Например, 2" ${isEditing ? "" : "disabled"} /></label>
+          <label class="field"><span>Квадратура, м2</span><input type="number" step="0.01" min="0" name="area" value="${unit.area}" placeholder="120" ${isEditing ? "" : "disabled"} /></label>
+          <label class="field"><span>Планировка</span><select name="layoutType" ${isEditing ? "" : "disabled"}><option value="" ${!unit.layoutType ? "selected" : ""}>Не выбрано</option><option value="1+1" ${unit.layoutType === "1+1" ? "selected" : ""}>1+1</option><option value="2+1" ${unit.layoutType === "2+1" ? "selected" : ""}>2+1</option><option value="3+1" ${unit.layoutType === "3+1" ? "selected" : ""}>3+1</option><option value="4+1" ${unit.layoutType === "4+1" ? "selected" : ""}>4+1</option></select></label>
+          <label class="field"><span>Доп. характеристика</span><select name="layoutFeature" ${isEditing ? "" : "disabled"}><option value="" ${!unit.layoutFeature ? "selected" : ""}>Не выбрано</option><option value="Линейная" ${unit.layoutFeature === "Линейная" ? "selected" : ""}>Линейная</option><option value="Дуплекс" ${unit.layoutFeature === "Дуплекс" ? "selected" : ""}>Дуплекс</option></select></label>
+          <label class="field"><span>Абонентский номер водоснабжения</span><input type="text" name="waterAccountNumber" value="${unit.waterAccountNumber || ""}" placeholder="Введите номер водоснабжения" ${isEditing ? "" : "disabled"} /></label>
+          <label class="field"><span>Абонентский номер электричества</span><input type="text" name="electricityAccountNumber" value="${unit.electricityAccountNumber || ""}" placeholder="Введите номер электричества" ${isEditing ? "" : "disabled"} /></label>
+        </div>
+        <div class="unit-profile-actions"><div class="form-message" data-unit-profile-message="${unit.id}"></div>${isEditing ? `<button type="submit" class="primary-button" data-ui-id="btn-save-unit-profile-${property.code}-${unit.number}">Сохранить параметры квартиры</button>` : `<button type="button" class="primary-button" data-edit-unit-profile="${unit.id}" data-ui-id="btn-edit-unit-profile-${property.code}-${unit.number}">Изменить</button>`}</div>
+      </form>
+    </article>
+  `;
 }
 
-function generateLocalAidatCharges(property, financeSettings) {
-  if (financeSettings.aidatCalculationMode !== "equal_for_all") {
-    return;
-  }
-
-  const amount = Number(financeSettings.aidatFixedAmount || 0);
-  const currency = financeSettings.aidatCurrencyCode || "TRY";
-  const months = monthRangeFromStoredDate(financeSettings.aidatStartDate);
-  if (!months.length || amount <= 0) {
-    return;
-  }
-
-  property.units.forEach((unit) => {
-    unit.chargeLogs = Array.isArray(unit.chargeLogs) ? unit.chargeLogs : [];
-
-    months.forEach((monthDate) => {
-      const period = monthDate.toISOString().slice(0, 7);
-      const exists = unit.chargeLogs.some(
-        (charge) => charge.period === period && charge.chargeType === "aidat"
-      );
-      if (exists) return;
-
-      unit.chargeLogs.unshift({
-        id: `local-aidat-${unit.id}-${period}`,
-        period,
-        chargeDate: `${period}-01`,
-        chargeType: "aidat",
-        chargeName: "Айдат",
-        amountDue: amount,
-        amountPaid: 0,
-        currency,
-        status: "unpaid",
-        note: `Aidat ${period}`,
-      });
-
-      const balances = getUnitBalances(unit);
-      const balanceIndex = balances.findIndex((entry) => entry.currency === currency);
-      if (balanceIndex >= 0) {
-        balances[balanceIndex].amount += amount;
-      } else {
-        balances.push({ currency, amount });
-      }
-      unit.balances = balances;
-      unit.debt = balances.find((entry) => entry.currency === "TRY")?.amount || 0;
-    });
-
-    unit.chargeLogs.sort((a, b) => String(b.chargeDate || b.period).localeCompare(String(a.chargeDate || a.period)));
-  });
-
-  property.totalBalances = aggregateBalances(property.units.map((unit) => getUnitBalances(unit)));
-}
-
-function applyLocalAidatPayment(unit, paymentInput) {
-  let remaining = Number(paymentInput.amount || 0);
-  const currency = paymentInput.currency || "TRY";
-  const aidatCharges = (unit.chargeLogs || [])
-    .filter((charge) => charge.chargeType === "aidat" && charge.currency === currency)
-    .sort((a, b) => String(a.chargeDate || a.period).localeCompare(String(b.chargeDate || b.period)));
-
-  for (const charge of aidatCharges) {
-    if (remaining <= 0) break;
-    const outstanding = Number(charge.amountDue || 0) - Number(charge.amountPaid || 0);
-    if (outstanding <= 0) continue;
-    const applied = Math.min(outstanding, remaining);
-    charge.amountPaid = Number(charge.amountPaid || 0) + applied;
-    charge.status = charge.amountPaid >= charge.amountDue ? "paid" : "partial";
-    remaining -= applied;
-  }
-
-  const appliedAmount = Number(paymentInput.amount || 0) - remaining;
-  if (appliedAmount <= 0) {
-    throw new Error("Нет начислений айдата для погашения");
-  }
-
-  const balances = getUnitBalances(unit);
-  const balanceEntry = balances.find((entry) => entry.currency === currency);
-  if (balanceEntry) {
-    balanceEntry.amount = Math.max(0, Number(balanceEntry.amount || 0) - appliedAmount);
-  }
-  unit.balances = balances.filter((entry) => entry.amount > 0);
-  unit.debt = unit.balances.find((entry) => entry.currency === "TRY")?.amount || 0;
-  unit.aidatPaymentLogs = Array.isArray(unit.aidatPaymentLogs) ? unit.aidatPaymentLogs : [];
-  unit.aidatPaymentLogs.unshift({
-    id: `local-aidat-payment-${unit.id}-${paymentInput.recordedAt}`,
-    amount: Number(paymentInput.amount || 0),
-    appliedAmount,
-    currency,
-    receivedDate: paymentInput.receivedDate,
-    recordedAt: paymentInput.recordedAt,
-    note: "Оплата айдата",
-  });
-
-  return appliedAmount;
+function buildUnitDetailMarkup(selectedUnit, selectedProperty) {
+  const unitOwners = Array.isArray(selectedUnit?.owners) ? selectedUnit.owners : [];
+  const aidatBalances = getUnitAidatBalances(selectedUnit);
+  const utilityBalances = getUnitUtilityBalances(selectedUnit);
+  const chargeLogs = Array.isArray(selectedUnit?.chargeLogs) ? selectedUnit.chargeLogs : [];
+  const aidatChargeLogs = chargeLogs.filter((charge) => charge.chargeType === "aidat");
+  const aidatPaymentLogs = Array.isArray(selectedUnit?.aidatPaymentLogs) ? selectedUnit.aidatPaymentLogs : [];
+  const aidatCurrency = aidatChargeLogs[0]?.currency || selectedProperty?.aidatCurrencyCode || "TRY";
+  const aidatAccruedTotal = aidatChargeLogs.reduce((sum, charge) => sum + Number(charge.amountDue || 0), 0);
+  const aidatPaidTotal = aidatChargeLogs.reduce((sum, charge) => sum + Number(charge.amountPaid || 0), 0);
+  const aidatRemainingTotal = Math.max(0, aidatAccruedTotal - aidatPaidTotal);
+  return `
+    <article class="card" data-ui-id="card-unit-main-${selectedProperty.code}-${selectedUnit.number}"><div class="card-head"><h4>Информация о помещении</h4><span>${selectedProperty.title}</span></div><div class="entity-meta"><span>Номер ${selectedUnit.number}</span><span>Этаж ${selectedUnit.floor}</span><span>Площадь ${selectedUnit.area} m2</span><span>Планировка ${selectedUnit.layoutType || "не указана"}</span><span>Характеристика ${selectedUnit.layoutFeature || "не указана"}</span><span>Вода ${selectedUnit.waterAccountNumber || "не указан"}</span><span>Электричество ${selectedUnit.electricityAccountNumber || "не указан"}</span><span>Статус ${selectedUnit.status}</span><span>Жителей ${selectedUnit.residents}</span></div><div class="owner-editor-actions">${canManageProperty(selectedProperty) ? `<button type="button" class="primary-button" data-edit-unit-details="${selectedUnit.id}" data-ui-id="btn-edit-unit-details-${selectedProperty.code}-${selectedUnit.number}">Редактировать помещение</button>` : ""}</div></article>
+    <article class="card" data-ui-id="card-unit-aidat-details-${selectedProperty.code}-${selectedUnit.number}"><div class="card-head"><h4>Айдат</h4><span>Данные из базы</span></div><div class="properties-summary"><div class="summary-mini"><span>Начислено</span><strong>${formatMoney(aidatAccruedTotal, aidatCurrency)}</strong></div><div class="summary-mini"><span>Оплачено</span><strong>${formatMoney(aidatPaidTotal, aidatCurrency)}</strong></div><div class="summary-mini"><span>Остаток</span><strong>${formatMoney(aidatRemainingTotal, aidatCurrency)}</strong></div></div>${aidatChargeLogs.length ? `<div class="property-finance-log-list">${aidatChargeLogs.map((charge) => `<div class="finance-log-entry"><strong>${formatChargeDate(charge.chargeDate || charge.period)}</strong><p>Начислено: ${formatMoney(Number(charge.amountDue || 0), charge.currency || aidatCurrency)}</p><p>Оплачено: ${formatMoney(Number(charge.amountPaid || 0), charge.currency || aidatCurrency)}</p></div>`).join("")}</div>` : '<div class="muted-note">Начислений айдата по квартире пока нет.</div>'}</article>
+    <article class="card finance-focus-card" data-ui-id="card-unit-finance-${selectedProperty.code}-${selectedUnit.number}"><div class="card-head"><h4>Финансовое состояние</h4><span>Общий обзор</span></div>${debtBreakdownMarkup(aidatBalances, utilityBalances)}${canAddAidatPaymentForCurrentUser(selectedProperty) ? `<div class="owner-editor-actions"><button type="button" class="primary-button" data-add-aidat-payment="${selectedUnit.id}" data-ui-id="btn-add-aidat-payment-${selectedProperty.code}-${selectedUnit.number}">Добавить оплату айдата</button></div>` : ""}${aidatPaymentLogs.length ? `<div class="property-finance-log-list">${aidatPaymentLogs.map((payment) => `<div class="finance-log-entry"><strong>${formatChargeDate(payment.receivedDate)}</strong><p>Оплата айдата: ${formatMoney(payment.amount, payment.currency)}</p><p>Внесено: ${formatDateTime(payment.recordedAt)}${payment.recordedByName ? ` • ${payment.recordedByName}` : ""}</p></div>`).join("")}</div>` : '<div class="muted-note">Оплат айдата пока нет.</div>'}</article>
+  `;
 }
 
 function openAidatPaymentModal(property, unit) {
@@ -2622,66 +2803,37 @@ function closeAidatPaymentModal() {
 async function handleAddAidat(propertyFinanceForm) {
   const property = getPropertyById(propertyFinanceForm.dataset.propertyFinanceForm);
   if (!property) return;
-
   const formData = new FormData(propertyFinanceForm);
   const aidatStartMonth = String(formData.get("aidatStartMonth") || "").trim();
   const aidatStartYear = String(formData.get("aidatStartYear") || "").trim();
-  const aidatStartValue =
-    aidatStartMonth && aidatStartYear ? `${aidatStartYear}-${aidatStartMonth}` : "";
+  const aidatStartValue = aidatStartMonth && aidatStartYear ? `${aidatStartYear}-${aidatStartMonth}` : "";
   const nextFinance = {
-    aidatCalculationMode:
-      String(formData.get("aidatCalculationMode") || "").trim() || "equal_for_all",
+    aidatCalculationMode: String(formData.get("aidatCalculationMode") || "").trim() || "equal_for_all",
     aidatStartDate: toStoredMonthDate(aidatStartValue),
-    aidatFixedAmount:
-      String(formData.get("aidatCalculationMode") || "").trim() === "equal_for_all"
-        ? String(formData.get("aidatFixedAmount") || "").trim()
-        : "",
-    aidatCurrencyCode:
-      String(formData.get("aidatCalculationMode") || "").trim() === "equal_for_all"
-        ? String(formData.get("aidatCurrencyCode") || "").trim() || "TRY"
-        : "TRY",
+    aidatFixedAmount: String(formData.get("aidatCalculationMode") || "").trim() === "equal_for_all" ? String(formData.get("aidatFixedAmount") || "").trim() : "",
+    aidatCurrencyCode: String(formData.get("aidatCalculationMode") || "").trim() === "equal_for_all" ? String(formData.get("aidatCurrencyCode") || "").trim() || "TRY" : "TRY",
   };
-
   try {
     const updatedProperty = await savePropertyFinanceViaApi(property.code, nextFinance);
     selectedPropertyId = updatedProperty.id;
     selectedUnitId = null;
     const financeMessage = propertyFinanceForm.querySelector("[data-property-finance-message]");
-    if (financeMessage) {
-      financeMessage.textContent = "Айдат добавлен через API.";
-    }
+    if (financeMessage) financeMessage.textContent = "Айдат добавлен через API.";
   } catch (error) {
     setApiStatus("offline");
-    const createdAt = new Date().toISOString();
-    const logEntry = {
-      id: `local-finance-log-${property.code}-${createdAt}`,
-      action: "aidat_settings_updated",
-      message: buildAidatLogMessage(property.title, nextFinance),
-      createdAt,
-      payload: nextFinance,
-    };
-    generateLocalAidatCharges(property, nextFinance);
-    property.aidatCalculationMode = nextFinance.aidatCalculationMode;
-    property.aidatStartDate = nextFinance.aidatStartDate;
-    property.aidatFixedAmount = nextFinance.aidatFixedAmount;
-    property.aidatCurrencyCode = nextFinance.aidatCurrencyCode;
-    property.financeLogs = Array.isArray(property.financeLogs) ? property.financeLogs : [];
-    property.financeLogs.unshift(logEntry);
-    selectedPropertyId = property.id;
-    selectedUnitId = null;
-    persistDataStore();
     const financeMessage = propertyFinanceForm.querySelector("[data-property-finance-message]");
-    if (financeMessage) {
-      financeMessage.textContent = "API недоступен. Айдат добавлен локально.";
-    }
+    if (financeMessage) financeMessage.textContent = error.message || "Не удалось сохранить айдат в базе данных.";
   }
-
   renderSummary();
   renderProperties();
 }
 
+function getRequestStatusLabel(value) {
+  return REQUEST_STATUS_LABELS[value] || value || "Не указан";
+}
+
 function statusBadge(value) {
-  return `<span class="badge badge-${value}">${value}</span>`;
+  return `<span class="badge badge-${value}">${getRequestStatusLabel(value)}</span>`;
 }
 
 function readinessClass(status) {
@@ -2729,11 +2881,11 @@ function canManageProperty(property) {
     role: currentUser.role,
     propertyManagerName: property.manager,
     currentUserName: currentUser.name,
+    propertyManagerId: property.managerId,
+    currentUserId: currentUser.id,
+    propertyCompanyCode: property.companyId,
+    currentCompanyCode: currentUser?.company?.code || "",
   });
-}
-
-function canEditPropertyTelegramIds(property) {
-  return canManageProperty(property);
 }
 
 function ensureAccessibleView() {
@@ -2741,6 +2893,37 @@ function ensureAccessibleView() {
   currentView = canAccessView("dashboard")
     ? "dashboard"
     : getDefaultView(currentUser?.role, "dashboard");
+}
+
+function renderNav() {
+  const navOrderByRole = {
+    project_owner: ["dashboard", "admin-panel", "company-clients", "properties", "clients", "payments", "requests", "documents"],
+    company_admin: ["dashboard", "managers", "properties", "clients", "payments", "requests"],
+    client: ["properties", "requests"],
+  };
+  const preferredOrder = navOrderByRole[currentUser?.role] || [];
+
+  if (sideNav && preferredOrder.length) {
+    preferredOrder.forEach((viewKey) => {
+      const link = Array.from(sideLinks).find((item) => item.dataset.view === viewKey);
+      if (link) sideNav.appendChild(link);
+    });
+  }
+
+  sideLinks.forEach((link) => {
+    const viewKey = link.dataset.view;
+    const isVisible = canAccessView(viewKey);
+    link.hidden = !isVisible;
+    link.style.display = isVisible ? "" : "none";
+    link.innerHTML = navLabel(viewKey);
+  });
+}
+
+function resetGlobalSearch() {
+  searchTerm = "";
+  if (searchInput) {
+    searchInput.value = "";
+  }
 }
 
 function renderAuthUi() {
@@ -2755,9 +2938,7 @@ function renderAuthUi() {
 
   if (switchUserButton) {
     switchUserButton.hidden = !currentUser;
-    switchUserButton.textContent = hasOwnerImpersonationAccess()
-      ? "Войти как"
-      : "Сменить пользователя";
+    switchUserButton.textContent = hasOwnerImpersonationAccess() ? "Войти как" : "Сменить пользователя";
   }
 
   if (newRequestButton) {
@@ -2767,891 +2948,6 @@ function renderAuthUi() {
   if (addPropertyButton) {
     addPropertyButton.hidden = !canAddProperties() || Boolean(selectedPropertyId || selectedUnitId);
   }
-}
-
-function renderImpersonationOptions() {
-  authUserSelect.innerHTML = impersonationTargets
-    .map(
-      (user) =>
-        `<option value="${user.id}">${user.name} • ${user.roleLabel}${user.companyName ? ` • ${user.companyName}` : ""}</option>`
-    )
-    .join("");
-
-  if (currentUser?.id) {
-    authUserSelect.value = currentUser.id;
-  } else if (impersonationTargets[0]) {
-    authUserSelect.value = impersonationTargets[0].id;
-  }
-}
-
-async function openAuthModal() {
-  authMessage.textContent = "";
-  authSubmitButton.disabled = false;
-  authRestoreButton.hidden = true;
-  authPasswordInput.value = "";
-
-  if (hasOwnerImpersonationAccess()) {
-    authMode = "impersonate";
-    authTitle.textContent = "Войти как пользователь";
-    authLoginField.hidden = true;
-    authPasswordField.hidden = true;
-    authImpersonationField.hidden = false;
-    authSubmitButton.textContent = "Открыть кабинет";
-    authRestoreButton.hidden = !currentImpersonator;
-    authMessage.textContent = "Загружаем список пользователей...";
-    authModal.classList.remove("is-hidden");
-    authModal.setAttribute("aria-hidden", "false");
-
-    try {
-      impersonationTargets = await fetchImpersonationTargetsViaApi();
-      renderImpersonationOptions();
-      authMessage.textContent = currentImpersonator
-        ? `Сейчас открыт кабинет пользователя ${currentUser.name}.`
-        : "Создатель может открыть кабинет любого сотрудника или клиента.";
-    } catch (error) {
-      authUserSelect.innerHTML = "";
-      authSubmitButton.disabled = true;
-      authMessage.textContent = error.message || "Не удалось загрузить список пользователей.";
-    }
-
-    return;
-  }
-
-  authMode = "login";
-  authTitle.textContent = "Вход в кабинет";
-  authLoginField.hidden = false;
-  authPasswordField.hidden = false;
-  authImpersonationField.hidden = true;
-  authSubmitButton.textContent = "Войти";
-  authLoginInput.value = currentUser?.login || "";
-  authMessage.textContent = "Создатель входит логином owner, сотрудники входят по коду сотрудника.";
-  authModal.classList.remove("is-hidden");
-  authModal.setAttribute("aria-hidden", "false");
-}
-
-function closeAuthModal() {
-  authModal.classList.add("is-hidden");
-  authModal.setAttribute("aria-hidden", "true");
-}
-
-function renderNav() {
-  const navOrderByRole = {
-    project_owner: ["dashboard", "admin-panel", "company-clients", "properties", "clients", "payments", "requests", "documents"],
-    company_admin: ["dashboard", "managers", "properties", "clients", "payments", "requests"],
-  };
-  const preferredOrder = navOrderByRole[currentUser?.role] || [];
-
-  if (sideNav && preferredOrder.length) {
-    preferredOrder.forEach((viewKey) => {
-      const link = Array.from(sideLinks).find((item) => item.dataset.view === viewKey);
-      if (link) {
-        sideNav.appendChild(link);
-      }
-    });
-  }
-
-  sideLinks.forEach((link) => {
-    const viewKey = link.dataset.view;
-    const isVisible = canAccessView(viewKey);
-    link.hidden = !isVisible;
-    link.style.display = isVisible ? "" : "none";
-    link.innerHTML = navLabel(viewKey);
-  });
-}
-
-function renderSummary() {
-  if (isClientRole()) {
-    const clientPrimaryUnit = getClientPrimaryUnit();
-    const scopedRequests = getScopedRequests();
-    const scopedDocuments = getScopedDocuments();
-    const myUnits = getVisibleProperties().reduce(
-      (sum, property) => sum + getVisibleUnits(property).length,
-      0
-    );
-    const myAidat = clientPrimaryUnit ? getUnitAidatBalances(clientPrimaryUnit.unit) : [];
-
-    const cards = [
-      { label: "Мои квартиры", value: myUnits },
-      {
-        label: "Мои заявки",
-        value: scopedRequests.filter((request) => request.status !== "done").length,
-      },
-      { label: "Айдат", value: formatBalancesSummary(myAidat) },
-      { label: "Мои документы", value: scopedDocuments.length },
-    ];
-
-    summaryStrip.innerHTML = cards
-      .map(
-        (card, index) => `
-          <article class="summary-card" data-ui-id="summary-card-client-${index + 1}">
-            <p class="eyebrow">${card.label}</p>
-            <strong>${card.value}</strong>
-          </article>
-        `
-      )
-      .join("");
-    return;
-  }
-
-  const totalOpenRequests = dataStore.requests.filter(
-    (request) => request.status !== "done"
-  ).length;
-  const overduePayments = dataStore.payments.filter(
-    (payment) => payment.status === "overdue"
-  ).length;
-  const activeClients = dataStore.clients.filter(
-    (client) => client.status === "active"
-  ).length;
-  const activePropertiesCount = dataStore.properties.filter(
-    (property) => property.status !== "archived"
-  ).length;
-  const managedPropertiesCount = getVisibleProperties().filter(
-    (property) => property.status !== "archived"
-  ).length;
-
-  const cards = [
-    currentUser?.role === "company_admin"
-      ? { label: "Домов в обслуживании", value: managedPropertiesCount }
-      : { label: "Активные клиенты", value: activeClients },
-    ...(currentUser?.role === "project_owner"
-      ? []
-      : [{ label: "Открытые заявки", value: totalOpenRequests }]),
-    { label: "Просроченные оплаты", value: overduePayments },
-    { label: "Объекты в работе", value: activePropertiesCount },
-  ];
-
-  summaryStrip.innerHTML = cards
-    .map(
-      (card) => `
-        <article class="summary-card" data-ui-id="summary-card-${card.value}">
-          <p class="eyebrow">${card.label}</p>
-          <strong>${card.value}</strong>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function renderDashboard() {
-  if (isClientRole()) {
-    const clientRecord = getCurrentClientRecord();
-    const scopedRequests = getScopedRequests();
-    const scopedPayments = getScopedPayments();
-    const clientPrimaryUnit = getClientPrimaryUnit();
-
-    document.getElementById("focus-card").innerHTML = clientPrimaryUnit
-      ? `
-        <p class="eyebrow">My apartment</p>
-        <h3>${clientPrimaryUnit.property.title}, квартира ${clientPrimaryUnit.unit.number}</h3>
-        <p>
-          ${clientRecord?.name || currentUser.name} видит только свою квартиру, начисления, документы и заявки.
-        </p>
-      `
-      : `
-        <p class="eyebrow">My apartment</p>
-        <h3>Квартира пока не привязана</h3>
-        <p>Для этой роли еще не настроена привязка к помещению.</p>
-      `;
-
-    document.getElementById("request-status-grid").innerHTML = clientPrimaryUnit
-      ? [
-          {
-            label: "Айдат",
-            value: formatBalancesSummary(getUnitAidatBalances(clientPrimaryUnit.unit)),
-          },
-          {
-            label: "Коммунальные",
-            value: formatBalancesSummary(getUnitUtilityBalances(clientPrimaryUnit.unit)),
-          },
-          {
-            label: "Документы",
-            value: getScopedDocuments().length,
-          },
-          {
-            label: "Открытые заявки",
-            value: scopedRequests.filter((request) => request.status !== "done").length,
-          },
-        ]
-          .map(
-            (item, index) => `
-              <article class="metric-tile" data-ui-id="metric-client-${index + 1}">
-                <span>${item.label}</span>
-                <strong>${item.value}</strong>
-              </article>
-            `
-          )
-          .join("")
-      : '<div class="empty-state">Нет привязанной квартиры.</div>';
-
-    document.getElementById("priority-requests").innerHTML = scopedRequests.length
-      ? scopedRequests
-          .map(
-            (request) => `
-              <article class="ticket-card" data-ui-id="card-client-request-${request.id}">
-                <strong>${request.title}</strong>
-                <p>${request.property}</p>
-                <div class="entity-meta">
-                  <span>${request.status}</span>
-                  <span>${request.createdAt}</span>
-                  <span>${request.priority}</span>
-                </div>
-              </article>
-            `
-          )
-          .join("")
-      : '<div class="empty-state">По вашей квартире заявок пока нет.</div>';
-
-    document.getElementById("payment-health").innerHTML = [
-      { label: "Оплачено", value: scopedPayments.filter((payment) => payment.status === "paid").length },
-      {
-        label: "Частично оплачено",
-        value: scopedPayments.filter((payment) => payment.status === "partial").length,
-      },
-      {
-        label: "Просрочено",
-        value: scopedPayments.filter((payment) => payment.status === "overdue").length,
-      },
-    ]
-      .map(
-        (item, index) => `
-          <div class="stack-item" data-ui-id="metric-client-payment-${index + 1}">
-            <span>${item.label}</span>
-            <strong>${item.value}</strong>
-          </div>
-        `
-      )
-      .join("");
-
-    document.getElementById("staff-load").innerHTML = clientPrimaryUnit
-      ? clientPrimaryUnit.unit.owners
-          .map(
-            (owner, index) => `
-              <div class="load-row" data-ui-id="row-client-owner-${index + 1}">
-                <div>
-                  <strong>${owner.name}</strong>
-                  <p>${owner.share || "доля не указана"}</p>
-                </div>
-                <div>
-                  <p>${owner.phone || "телефон не указан"}</p>
-                </div>
-              </div>
-            `
-          )
-          .join("")
-      : '<div class="empty-state">Нет данных по собственнику.</div>';
-    return;
-  }
-
-  const requestBuckets = {
-    new: dataStore.requests.filter((request) => request.status === "new").length,
-    in_progress: dataStore.requests.filter((request) => request.status === "in_progress").length,
-    waiting: dataStore.requests.filter((request) => request.status === "waiting").length,
-    done: dataStore.requests.filter((request) => request.status === "done").length,
-  };
-
-  const urgentRequests = dataStore.requests.filter(
-    (request) => request.priority === "urgent" || request.priority === "high"
-  );
-
-  const paidCount = dataStore.payments.filter((payment) => payment.status === "paid").length;
-  const partialCount = dataStore.payments.filter((payment) => payment.status === "partial").length;
-  const overdueCount = dataStore.payments.filter((payment) => payment.status === "overdue").length;
-
-  document.getElementById("focus-card").innerHTML = `
-    <p class="eyebrow">Main Focus</p>
-    <h3>Сегодня системе нужно внимание к ${urgentRequests.length} приоритетным обращениям.</h3>
-    <p>Самый рискованный участок сейчас: срочные ремонты и просроченные оплаты. Этот блок потом можно будет связать с реальным SLA и оповещениями.</p>
-  `;
-
-  document.getElementById("request-status-grid").innerHTML = Object.entries(requestBuckets)
-    .map(
-      ([status, count]) => `
-        <article class="metric-tile" data-ui-id="metric-status-${status}">
-          <span>${status}</span>
-          <strong>${count}</strong>
-        </article>
-      `
-    )
-    .join("");
-
-  document.getElementById("priority-requests").innerHTML = urgentRequests
-    .map(
-      (request) => `
-        <article class="ticket-card" data-ui-id="card-priority-request-${request.id}">
-          <strong>${request.title}</strong>
-          <p>${request.client} • ${request.property}</p>
-          <div class="entity-meta">
-            <span>${request.assignee}</span>
-            <span>${request.createdAt}</span>
-            <span>${request.priority}</span>
-          </div>
-        </article>
-      `
-    )
-    .join("");
-
-  document.getElementById("payment-health").innerHTML = [
-    { label: "Оплачено", value: paidCount },
-    { label: "Частично оплачено", value: partialCount },
-    { label: "Просрочено", value: overdueCount },
-  ]
-    .map(
-      (item) => `
-        <div class="stack-item" data-ui-id="metric-payment-${item.value}">
-          <span>${item.label}</span>
-          <strong>${item.value}</strong>
-        </div>
-      `
-    )
-    .join("");
-
-  document.getElementById("staff-load").innerHTML = dataStore.staff
-    .map((member) => {
-      const loadPercent = Math.min(100, member.openRequests * 10);
-      return `
-        <div class="load-row" data-ui-id="row-staff-${member.id}">
-          <div>
-            <strong>${member.name}</strong>
-            <p>${getRoleLabel(member.role)}</p>
-          </div>
-          <div>
-            <div class="load-bar"><span style="width:${loadPercent}%"></span></div>
-            <p>${member.openRequests} открытых</p>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function matchesSearch(value) {
-  if (!searchTerm) return true;
-  return value.toLowerCase().includes(searchTerm.toLowerCase());
-}
-
-function renderRequestFilters() {
-  const filters = ["all", "new", "in_progress", "waiting", "done"];
-  requestFilters.innerHTML = filters
-    .map(
-      (filter) => `
-        <button class="filter-chip ${requestStatusFilter === filter ? "is-active" : ""}" data-filter="${filter}" data-ui-id="filter-request-${filter}">
-          ${filter}
-        </button>
-      `
-    )
-    .join("");
-
-  requestFilters.querySelectorAll(".filter-chip").forEach((button) => {
-    button.addEventListener("click", () => {
-      requestStatusFilter = button.dataset.filter;
-      renderRequestFilters();
-      renderRequestsTable();
-    });
-  });
-}
-
-function renderRequestsTable() {
-  const filtered = getScopedRequests().filter((request) => {
-    const filterMatch =
-      requestStatusFilter === "all" || request.status === requestStatusFilter;
-    const textMatch = matchesSearch(
-      `${request.id} ${request.title} ${request.client} ${request.property}`
-    );
-    return filterMatch && textMatch;
-  });
-
-  document.getElementById("requests-table").innerHTML = filtered.length
-    ? `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Заголовок</th>
-              <th>Клиент</th>
-              <th>Объект</th>
-              <th>Приоритет</th>
-              <th>Статус</th>
-              <th>Исполнитель</th>
-              <th>Источник</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${filtered
-              .map(
-                (request) => `
-                  <tr data-ui-id="row-request-${request.id}">
-                    <td>${request.id}</td>
-                    <td>
-                      <strong>${request.title}</strong>
-                      <div class="table-meta">${request.createdAt}</div>
-                    </td>
-                    <td>${request.client}</td>
-                    <td>${request.property}</td>
-                    <td>${statusBadge(request.priority === "urgent" ? "urgent" : request.priority)}</td>
-                    <td>${statusBadge(request.status)}</td>
-                    <td>${request.assignee}</td>
-                    <td>${request.source}</td>
-                  </tr>
-                `
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-    `
-    : '<div class="empty-state">По текущим фильтрам заявки не найдены.</div>';
-}
-
-function nextManagerId() {
-  const maxValue = dataStore.staff.reduce((max, member) => {
-    const numeric = Number(String(member.id || "").replace("ST-", ""));
-    return Number.isNaN(numeric) ? max : Math.max(max, numeric);
-  }, 0);
-
-  return `ST-${String(maxValue + 1).padStart(2, "0")}`;
-}
-
-function renderManagers() {
-  if (!managersGrid) return;
-
-  const managers = dataStore.staff
-    .filter((member) => member.role === "manager")
-    .filter((member) =>
-      matchesSearch(`${member.id} ${member.name} ${member.phone || ""} ${member.status || ""}`)
-    );
-  const canManageManagers = ["project_owner", "company_admin"].includes(currentUser?.role);
-
-  const managerForm = canManageManagers
-    ? `
-      <article class="card manager-panel-card" data-ui-id="card-manager-create">
-        <div class="card-head">
-          <h4>${editingManagerId ? "Редактировать менеджера" : "Добавить менеджера"}</h4>
-          <span>${editingManagerId ? editingManagerId : "Новый сотрудник"}</span>
-        </div>
-        <form id="manager-form" class="form-grid" data-manager-form>
-          <label class="field">
-            <span>ФИО менеджера</span>
-            <input name="name" type="text" placeholder="Введите имя" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.name || "") : ""}" required />
-          </label>
-          <label class="field">
-            <span>Логин</span>
-            <input name="login" type="text" placeholder="manager.login" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.login || "") : ""}" required />
-          </label>
-          <label class="field">
-            <span>Пароль</span>
-            <input name="password" type="text" placeholder="${editingManagerId ? "Оставьте пустым, чтобы не менять" : "Введите пароль"}" ${editingManagerId ? "" : "required"} />
-          </label>
-          <label class="field">
-            <span>Телефон</span>
-            <input name="phone" type="text" placeholder="+90 555 ..." value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.phone || "") : ""}" />
-          </label>
-          <label class="field">
-            <span>Статус</span>
-            <select name="status">
-              <option value="active" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "active" ? "selected" : "") : "selected"}>Активен</option>
-              <option value="inactive" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "inactive" ? "selected" : "") : ""}>Неактивен</option>
-            </select>
-          </label>
-          <div class="modal-actions field-full manager-form-actions">
-            <div id="manager-form-message" class="form-message">${managerFormFeedback}</div>
-            ${editingManagerId ? '<button type="button" class="ghost-button" data-cancel-manager-edit>Отмена</button>' : ''}
-            <button type="submit" class="primary-button">${editingManagerId ? "Сохранить" : "Добавить"}</button>
-          </div>
-        </form>
-      </article>
-    `
-    : "";
-
-  const managerCards = managers.length
-    ? managers
-        .map(
-          (member) => `
-            <article class="entity-card" data-ui-id="card-manager-${member.id}">
-              <p class="eyebrow">${member.id}</p>
-              <strong>${member.name}</strong>
-              <p>Менеджер компании${member.phone ? ` • ${member.phone}` : ""}</p>
-              <div class="entity-meta">
-                <span>Логин: ${member.login || member.id}</span>
-                <span>Пароль: скрыт</span>
-              </div>
-              <div class="entity-meta">
-                <span>${member.status === "active" ? "Активен" : "Неактивен"}</span>
-                <span>${member.openRequests} открытых заявок</span>
-              </div>
-              ${canManageManagers ? `
-                <div class="company-card-actions manager-card-actions">
-                  <button type="button" class="ghost-button" data-edit-manager="${member.id}">Редактировать</button>
-                  <button type="button" class="ghost-button" data-delete-manager="${member.id}">Удалить</button>
-                </div>
-              ` : ""}
-            </article>
-          `
-        )
-        .join("")
-    : '<div class="empty-state">Менеджеры этой компании пока не добавлены.</div>';
-
-  managersGrid.innerHTML = `${managerForm}${managerCards}`;
-}
-
-function renderClients() {
-  const filtered = dataStore.clients.filter((client) =>
-    matchesSearch(`${client.id} ${client.name} ${client.phone} ${client.properties.join(" ")}`)
-  );
-
-  document.getElementById("clients-grid").innerHTML = filtered
-    .map(
-      (client) => `
-        <article class="entity-card" data-ui-id="card-client-${client.id}">
-          <p class="eyebrow">${client.id}</p>
-          <strong>${client.name}</strong>
-          <p>${getRoleLabel(client.role)} • ${client.phone}</p>
-          <div class="entity-meta">
-            <span>${client.telegram}</span>
-            <span>${client.status}</span>
-            <span>${client.properties.length} объекта</span>
-          </div>
-          <p>${client.properties.join(", ")}</p>
-        </article>
-      `
-    )
-    .join("");
-}
-
-function renderProperties() {
-  let selectedProperty = getPropertyById(selectedPropertyId);
-  if (selectedProperty && !propertyBelongsToCurrentClient(selectedProperty)) {
-    selectedPropertyId = null;
-    selectedUnitId = null;
-    selectedProperty = null;
-  }
-
-  let selectedUnit = getUnitById(selectedProperty, selectedUnitId);
-  if (selectedUnit && !unitBelongsToCurrentClient(selectedUnit)) {
-    selectedUnitId = null;
-    selectedUnit = null;
-  }
-
-  addPropertyButton.hidden = !canAddProperties() || Boolean(selectedProperty || selectedUnit);
-
-  if (!selectedProperty) {
-    const filtered = getVisibleProperties().filter((property) =>
-      matchesSearch(
-        `${property.id} ${property.title} ${property.city} ${property.district} ${property.manager}`
-      )
-    );
-    const activeProperties = filtered.filter((property) => property.status !== "archived");
-    const archivedProperties = filtered.filter((property) => property.status === "archived");
-
-    propertiesBreadcrumbs.innerHTML = `
-      <span class="filter-chip is-active">Все объекты</span>
-      <span class="filter-chip">${activeProperties.length} активных домов</span>
-    `;
-
-    propertiesOverview.innerHTML = `
-      <article class="card">
-        <div class="card-head">
-          <h4>Реестр домов</h4>
-          <span>Главный уровень</span>
-        </div>
-        <div class="properties-summary">
-          <div class="summary-mini">
-            <span>Активных домов</span>
-            <strong>${activeProperties.length}</strong>
-          </div>
-          <div class="summary-mini">
-            <span>Всего помещений</span>
-            <strong>${activeProperties.reduce((sum, property) => sum + property.units.length, 0)}</strong>
-          </div>
-          <div class="summary-mini">
-            <span>Айдат</span>
-            <strong>${formatBalancesSummary(aggregateBalances(activeProperties.map((property) => getPropertyAidatBalances(property))))}</strong>
-          </div>
-          <div class="summary-mini">
-            <span>Коммунальные</span>
-            <strong>${formatBalancesSummary(aggregateBalances(activeProperties.map((property) => getPropertyUtilityBalances(property))))}</strong>
-          </div>
-        </div>
-      </article>
-      ${
-        isProjectOwner()
-          ? `
-            <article class="card properties-archive" data-ui-id="card-properties-archive">
-              <div class="card-head">
-                <h4>Архив объектов</h4>
-                <span>Виден только владельцу проекта</span>
-              </div>
-              <div class="properties-archive-list">
-                ${
-                  archivedProperties.length
-                    ? archivedProperties
-                        .map(
-                          (property) => `
-                            <div class="summary-mini archive-entry" data-ui-id="archive-property-${property.code}">
-                              <div class="archive-entry-copy">
-                                <strong>${property.code}</strong>
-                                <p>${property.title}</p>
-                              </div>
-                              <button
-                                class="ghost-button inline-button"
-                                data-restore-property="${property.id}"
-                                data-ui-id="btn-restore-property-${property.code}"
-                              >
-                                Вернуть
-                              </button>
-                            </div>
-                          `
-                        )
-                        .join("")
-                    : '<div class="muted-note">В архиве пока нет домов.</div>'
-                }
-              </div>
-            </article>
-          `
-          : ""
-      }
-    `;
-
-    propertiesGrid.className = "entity-grid";
-    propertiesGrid.innerHTML = activeProperties.length
-      ? activeProperties
-          .map(
-            (property) => `
-              <article class="entity-card interactive-card property-card-shell" data-ui-id="card-property-${property.code}">
-                <div>
-                  <p class="eyebrow">${property.code} • ${property.id}</p>
-                  <strong>${property.title}</strong>
-                  <p>${property.city}, ${property.district}</p>
-                </div>
-                <div class="entity-meta">
-                  <span>${property.type}</span>
-                  <span>${property.manager}</span>
-                  <span>${property.units.length} помещений</span>
-                  <span>${property.status}</span>
-                </div>
-                ${debtBreakdownMarkup(getPropertyAidatBalances(property), getPropertyUtilityBalances(property))}
-                <div class="entity-meta">
-                  <button class="primary-button inline-button" data-open-property="${property.id}" data-ui-id="btn-open-property-${property.code}">
-                    Открыть объект
-                  </button>
-                  ${
-                    isProjectOwner()
-                      ? `<button class="ghost-button inline-button" data-archive-property="${property.id}" data-ui-id="btn-archive-property-${property.code}">
-                          В архив
-                        </button>`
-                      : ""
-                  }
-                </div>
-              </article>
-            `
-          )
-          .join("")
-      : '<div class="empty-state">Объекты по текущему поиску не найдены.</div>';
-
-    return;
-  }
-
-  if (!selectedUnit) {
-    const filteredUnits = getVisibleUnits(selectedProperty).filter((unit) =>
-      matchesSearch(
-        `${unit.number} ${unit.status} ${unit.owners.map((owner) => owner.name).join(" ")}`
-      )
-    );
-
-    propertiesBreadcrumbs.innerHTML = `
-      <button class="filter-chip" data-back-to-properties="true">Все объекты</button>
-      <span class="filter-chip is-active">${selectedProperty.title}</span>
-    `;
-
-    propertiesOverview.innerHTML = `
-      <article class="card">
-        <div class="card-head">
-          <h4>${selectedProperty.title}</h4>
-          <span>${selectedProperty.code} • ${selectedProperty.city}, ${selectedProperty.district}</span>
-        </div>
-        <div class="properties-summary">
-          <div class="summary-mini">
-            <span>Помещений</span>
-            <strong>${selectedProperty.units.length}</strong>
-          </div>
-          <div class="summary-mini">
-            <span>Собственников</span>
-            <strong>${selectedProperty.units.reduce((sum, unit) => sum + unit.owners.length, 0)}</strong>
-          </div>
-          <div class="summary-mini">
-            <span>Айдат по дому</span>
-            <strong>${formatBalancesSummary(getPropertyAidatBalances(selectedProperty))}</strong>
-          </div>
-          <div class="summary-mini">
-            <span>Коммунальные по дому</span>
-            <strong>${formatBalancesSummary(getPropertyUtilityBalances(selectedProperty))}</strong>
-          </div>
-        </div>
-      </article>
-      ${canManageProperty(selectedProperty) ? renderPropertyFinanceEditor(selectedProperty) : ""}
-      ${canManageProperty(selectedProperty) && isPropertyReportVisible ? renderPropertyYearReport(selectedProperty, filteredUnits, selectedPropertyReportYear) : ""}
-    `;
-
-    propertiesGrid.className = "unit-grid";
-    propertiesGrid.innerHTML = filteredUnits.length
-      ? filteredUnits
-          .map(
-            (unit) => `
-              <article class="entity-card interactive-card unit-card-shell" data-ui-id="card-unit-${selectedProperty.code}-${unit.number}">
-                <div class="unit-number">#${unit.number}</div>
-                <div>
-                  <strong>${unitOwnerSummary(unit)}</strong>
-                  <p class="muted-note">Собственник помещения</p>
-                </div>
-                <div class="entity-meta">
-                  <span>${unit.area} m2</span>
-                  <span>Этаж ${unit.floor}</span>
-                  <span>${unit.owners.length} собственник(а)</span>
-                  <span>${unit.status}</span>
-                </div>
-                ${debtBreakdownMarkup(getUnitAidatBalances(unit), getUnitUtilityBalances(unit))}
-                <button class="primary-button inline-button" data-open-unit="${unit.id}" data-ui-id="btn-open-unit-${selectedProperty.code}-${unit.number}">
-                  Открыть помещение
-                </button>
-              </article>
-            `
-          )
-          .join("")
-      : '<div class="empty-state">Помещения по текущему поиску не найдены.</div>';
-
-    return;
-  }
-
-  propertiesBreadcrumbs.innerHTML = `
-    <button class="filter-chip" data-back-to-properties="true">Все объекты</button>
-    <button class="filter-chip" data-back-to-units="true">${selectedProperty.title}</button>
-    <span class="filter-chip is-active">Помещение ${selectedUnit.number}</span>
-  `;
-
-  propertiesOverview.innerHTML = `
-    <article class="card" data-ui-id="card-unit-info-${selectedProperty.code}-${selectedUnit.number}">
-      <div class="card-head">
-        <h4>Помещение ${selectedUnit.number}</h4>
-        <span>${selectedProperty.title}</span>
-      </div>
-      <div class="properties-summary">
-        <div class="summary-mini">
-          <span>Площадь</span>
-          <strong>${selectedUnit.area} m2</strong>
-        </div>
-        <div class="summary-mini">
-          <span>Собственники</span>
-          <strong>${selectedUnit.owners.length}</strong>
-        </div>
-        <div class="summary-mini">
-          <span>Айдат</span>
-          <strong>${formatBalancesSummary(getUnitAidatBalances(selectedUnit))}</strong>
-        </div>
-        <div class="summary-mini">
-          <span>Коммунальные</span>
-          <strong>${formatBalancesSummary(getUnitUtilityBalances(selectedUnit))}</strong>
-        </div>
-      </div>
-    </article>
-  `;
-
-  propertiesGrid.className = "detail-grid";
-  propertiesGrid.innerHTML = `
-    ${canManageProperty(selectedProperty) ? renderUnitProfileEditor(selectedUnit, selectedProperty) : ""}
-    <article class="card" data-ui-id="card-unit-debts-${selectedProperty.code}-${selectedUnit.number}">
-      <div class="card-head">
-        <h4>Информация о помещении</h4>
-        <span>Apartment profile</span>
-      </div>
-      <div class="entity-meta">
-        <span>Номер ${selectedUnit.number}</span>
-        <span>Этаж ${selectedUnit.floor}</span>
-        <span>${selectedUnit.area} m2</span>
-        <span>Планировка ${selectedUnit.layoutType || "не указана"}</span>
-        <span>Характеристика ${selectedUnit.layoutFeature || "не указана"}</span>
-        <span>Вода ${selectedUnit.waterAccountNumber || "не указан"}</span>
-        <span>Электричество ${selectedUnit.electricityAccountNumber || "не указан"}</span>
-        <span>${selectedUnit.status}</span>
-        <span>Жителей ${selectedUnit.residents}</span>
-      </div>
-      <p>Здесь далее можно будет хранить техпаспорт, историю обслуживания, документы и показания.</p>
-    </article>
-    ${canManageProperty(selectedProperty) ? renderOwnerEditor(selectedUnit, selectedProperty) : ""}
-    ${selectedUnit.owners
-      .map(
-        (owner, index) => `
-          <article class="card" data-ui-id="card-owner-${selectedProperty.code}-${selectedUnit.number}-${index + 1}">
-            <div class="card-head">
-              <h4>Собственник ${index + 1}</h4>
-              <span>${owner.share}</span>
-            </div>
-            <p><strong>${owner.name}</strong></p>
-            <div class="entity-meta">
-              <span>${owner.clientId}</span>
-              <span>${owner.phone}</span>
-              <span>Telegram ID ${owner.telegramId || "не указан"}</span>
-              <span>Помещение ${selectedUnit.number}</span>
-            </div>
-            <p>На этом уровне позже можно открыть полную карточку клиента, историю оплат и документы.</p>
-          </article>
-        `
-      )
-      .join("")}
-    <article class="card finance-focus-card">
-      <div class="card-head">
-        <h4>Финансовое состояние</h4>
-        <span>Debts</span>
-      </div>
-      ${debtBreakdownMarkup(getUnitAidatBalances(selectedUnit), getUnitUtilityBalances(selectedUnit))}
-      ${
-        canManageProperty(selectedProperty)
-          ? `<div class="owner-editor-actions">
-              <button
-                type="button"
-                class="primary-button"
-                data-add-aidat-payment="${selectedUnit.id}"
-                data-ui-id="btn-add-aidat-payment-${selectedProperty.code}-${selectedUnit.number}"
-              >
-                Добавить оплату айдата
-              </button>
-            </div>`
-          : ""
-      }
-      <div class="property-finance-log-list">
-        ${
-          selectedUnit.chargeLogs?.length
-            ? selectedUnit.chargeLogs
-                .map(
-                  (charge) => `
-                    <div class="finance-log-entry">
-                      <strong>${formatChargeDate(charge.chargeDate || charge.period)}</strong>
-                      <p>${charge.chargeName || "Начисление"}: ${formatMoney(charge.amountDue, charge.currency)}</p>
-                    </div>
-                  `
-                )
-                .join("")
-            : '<div class="muted-note">Начислений по квартире пока нет.</div>'
-        }
-      </div>
-      <div class="property-finance-log-list">
-        ${
-          selectedUnit.aidatPaymentLogs?.length
-            ? selectedUnit.aidatPaymentLogs
-                .map(
-                  (payment) => `
-                    <div class="finance-log-entry">
-                      <strong>${formatChargeDate(payment.receivedDate)}</strong>
-                      <p>Оплата айдата: ${formatMoney(payment.amount, payment.currency)}</p>
-                      <p>Внесено: ${formatDateTime(payment.recordedAt)}</p>
-                    </div>
-                  `
-                )
-                .join("")
-            : '<div class="muted-note">Оплат айдата пока нет.</div>'
-        }
-      </div>
-    </article>
-  `;
 }
 
 function renderPayments() {
@@ -3800,13 +3096,32 @@ function renderDocuments() {
 
 function renderViewMeta() {
   const view = views[currentView];
+  const hideClientRequestDescription = isClientRole() && currentView === "requests";
+  const requestsStatusPill = document.querySelector('[data-ui-id="pill-requests-status"]');
+  const staticAreas = Array.isArray(view.staticAreas) ? view.staticAreas : [];
   viewTitle.textContent = view.title;
   viewDescription.innerHTML = `
     <h4>${view.title}</h4>
-    <p>${view.description}</p>
-    <div class="${readinessPillClass(view.readiness)}">${readinessLabels[view.readiness]}</div>
+    ${hideClientRequestDescription ? "" : `<p>${view.description}</p>`}
+    <div class="view-meta-pills">
+      <div class="${readinessPillClass(view.readiness)}">${readinessLabels[view.readiness]}</div>
+      <div class="${sourcePillClass(view.source)}">${sourceLabels[view.source] || sourceLabels.mixed}</div>
+    </div>
     <p>${view.note}</p>
+    ${staticAreas.length ? `
+      <div class="static-areas-note">
+        <strong>Пока статично</strong>
+        <ul class="plain-list static-areas-list">
+          ${staticAreas.map((item) => `<li>${item}</li>`).join("")}
+        </ul>
+      </div>
+    ` : ""}
   `;
+
+  if (requestsStatusPill) {
+    requestsStatusPill.textContent = hideClientRequestDescription ? "" : "Queue management";
+    requestsStatusPill.style.display = hideClientRequestDescription ? "none" : "";
+  }
 
   viewReadiness.innerHTML = `
     <div class="readiness-list">
@@ -3860,6 +3175,71 @@ function closePropertyModal() {
   propertyFormMessage.textContent = "";
 }
 
+function renderClientRequestRouting(requestTarget) {
+  if (!clientRequestRouting) return;
+  const companyName = requestTarget?.property?.companyName || "не указана";
+  const managerName = requestTarget?.property?.manager || "не назначен";
+  clientRequestRouting.innerHTML = `Заявка передается компании <strong>${companyName}</strong>, ответственный менеджер <strong>${managerName}</strong>.`;
+}
+
+function openClientRequestModal(requestTarget = getRequestTargetUnit()) {
+  if (!clientRequestModal || !clientRequestForm) return;
+  const requestTargets = getClientRequestTargetUnits();
+  const selectedTarget = requestTarget || requestTargets[0] || null;
+
+  clientRequestModal.classList.remove("is-hidden");
+  clientRequestModal.setAttribute("aria-hidden", "false");
+  clientRequestForm.reset();
+  clientRequestMessage.textContent = "";
+
+  if (clientRequestUnitField && clientRequestUnitSelect) {
+    if (requestTargets.length > 1) {
+      clientRequestUnitField.classList.remove("is-hidden");
+      clientRequestUnitSelect.innerHTML = requestTargets
+        .map((item) => {
+          const unitCode = item.unit.code || item.unit.id;
+          const selected = selectedTarget && (selectedTarget.unit.code || selectedTarget.unit.id) === unitCode;
+          return `<option value="${unitCode}" ${selected ? "selected" : ""}>${item.property.title} • кв. ${item.unit.number}</option>`;
+        })
+        .join("");
+    } else {
+      clientRequestUnitField.classList.add("is-hidden");
+      clientRequestUnitSelect.innerHTML = selectedTarget
+        ? `<option value="${selectedTarget.unit.code || selectedTarget.unit.id}" selected>${selectedTarget.property.title} • кв. ${selectedTarget.unit.number}</option>`
+        : "";
+    }
+  }
+
+  renderClientRequestRouting(selectedTarget);
+}
+
+function closeClientRequestModal() {
+  if (!clientRequestModal || !clientRequestForm) return;
+  clientRequestModal.classList.add("is-hidden");
+  clientRequestModal.setAttribute("aria-hidden", "true");
+  clientRequestForm.reset();
+  clientRequestMessage.textContent = "";
+  if (clientRequestRouting) {
+    clientRequestRouting.textContent = "";
+  }
+  if (clientRequestUnitSelect) {
+    clientRequestUnitSelect.innerHTML = "";
+  }
+  if (clientRequestUnitField) {
+    clientRequestUnitField.classList.add("is-hidden");
+  }
+}
+
+async function readFileAsDataUrl(file) {
+  if (!file) return "";
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function openArchiveConfirmModal(propertyId) {
   pendingArchivePropertyId = propertyId;
   archiveConfirmModal.classList.remove("is-hidden");
@@ -3890,14 +3270,28 @@ function renderAll() {
 
 sideLinks.forEach((link) => {
   link.addEventListener("click", async () => {
-    if (link.dataset.view === "properties") {
-      selectedPropertyId = null;
-      selectedUnitId = null;
+    if (["properties", "clients"].includes(link.dataset.view)) {
+      if (link.dataset.view === "properties") {
+        selectedPropertyId = null;
+        selectedUnitId = null;
+      }
+      if (link.dataset.view === "clients") {
+        selectedClientRowId = null;
+      }
       await syncPropertiesFromApi();
+    }
+    if (link.dataset.view === "requests") {
+      selectedRequestCode = null;
     }
     setView(link.dataset.view);
     if (link.dataset.view === "properties") {
       renderProperties();
+    }
+    if (link.dataset.view === "clients") {
+      renderClients();
+    }
+    if (link.dataset.view === "requests") {
+      renderRequestsTable();
     }
   });
 });
@@ -3907,6 +3301,82 @@ document.addEventListener("click", (event) => {
   if (routeButton) {
     setView(routeButton.dataset.openAdminRoute);
     renderAll();
+    return;
+  }
+
+  const openClientRequestButton = event.target.closest("[data-open-client-request]");
+  if (openClientRequestButton) {
+    const requestTarget = getRequestTargetUnit();
+    if (!requestTarget) {
+      window.alert("Для заявки нужна привязанная квартира.");
+      return;
+    }
+    openClientRequestModal(requestTarget);
+    return;
+  }
+
+  const saveRequestStatusButton = event.target.closest("[data-save-request-status]");
+  if (saveRequestStatusButton) {
+    const requestCode = saveRequestStatusButton.dataset.saveRequestStatus;
+    const statusSelect = document.querySelector(`[data-request-status-select="${requestCode}"]`);
+    const cancelCommentInput = document.querySelector(`[data-request-cancel-comment="${requestCode}"]`);
+    const nextStatus = String(statusSelect?.value || "new").trim();
+    const cancelComment = String(cancelCommentInput?.value || "").trim();
+
+    if (nextStatus === "cancelled" && !cancelComment) {
+      window.alert("При отмене заявки нужно добавить комментарий.");
+      cancelCommentInput?.focus();
+      return;
+    }
+
+    updateRequestStatusViaApi(requestCode, nextStatus, cancelComment)
+      .then(async () => {
+        await syncRequestsFromApi();
+        renderAll();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        window.alert(error.message || "Не удалось обновить статус заявки.");
+      });
+    return;
+  }
+
+  const acceptRequestButton = event.target.closest("[data-request-client-accept]");
+  if (acceptRequestButton) {
+    const requestCode = acceptRequestButton.dataset.requestClientAccept;
+    reviewRequestViaApi(requestCode, "accept")
+      .then(async () => {
+        await syncRequestsFromApi();
+        renderAll();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        window.alert(error.message || "Не удалось подтвердить заявку.");
+      });
+    return;
+  }
+
+  const reworkRequestButton = event.target.closest("[data-request-client-rework]");
+  if (reworkRequestButton) {
+    const requestCode = reworkRequestButton.dataset.requestClientRework;
+    const commentInput = document.querySelector(`[data-request-client-rework-comment="${requestCode}"]`);
+    const comment = String(commentInput?.value || "").trim();
+
+    if (!comment) {
+      window.alert("Чтобы вернуть заявку на доработку, нужен комментарий.");
+      commentInput?.focus();
+      return;
+    }
+
+    reviewRequestViaApi(requestCode, "rework", comment)
+      .then(async () => {
+        await syncRequestsFromApi();
+        renderAll();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        window.alert(error.message || "Не удалось вернуть заявку на доработку.");
+      });
     return;
   }
 
@@ -3964,10 +3434,9 @@ document.addEventListener("click", (event) => {
 
   const companyId = deleteCompanyButton.dataset.companyDelete;
   deleteCompanyViaApi(companyId)
-    .catch(() => {
+    .catch((error) => {
       setApiStatus("offline");
-      dataStore.companies = removeCompanyState(dataStore.companies, companyId);
-      persistDataStore();
+      window.alert(error.message || "Не удалось удалить компанию из базы данных.");
     })
     .finally(() => {
       editingCompanyId = null;
@@ -4023,25 +3492,12 @@ document.addEventListener("submit", (event) => {
           nextMessageNode.textContent = `Компания ${companyId} сохранена в БД. Временный пароль: ${companyRecord.tempPassword}`;
         }
       })
-      .catch(() => {
+      .catch((error) => {
         setApiStatus("offline");
-        const fallbackRecord = upsertCompany({
-          id: companyId,
-          companyId,
-          title,
-          directorName,
-          telegramId,
-          telegramUsername,
-          telegramLoginMode: "telegram_password",
-          tempPassword: generateTemporaryCompanyPassword(),
-          mustChangePassword: true,
-          status: "invited",
-          createdAt: new Date().toISOString(),
-        });
         renderCompanyClients();
         const nextMessageNode = document.getElementById("company-create-message");
         if (nextMessageNode) {
-          nextMessageNode.textContent = `API недоступен. Компания ${companyId} сохранена только локально. Временный пароль: ${fallbackRecord.tempPassword}`;
+          nextMessageNode.textContent = error.message || `Не удалось сохранить компанию ${companyId} в базу данных.`;
         }
       });
     return;
@@ -4057,6 +3513,7 @@ document.addEventListener("submit", (event) => {
     const password = String(formData.get("password") || "");
     const phone = String(formData.get("phone") || "").trim();
     const status = String(formData.get("status") || "active").trim() || "active";
+    const canRecordClientPayments = formData.get("canRecordClientPayments") === "on";
     const email = "";
 
     if (!name) {
@@ -4078,8 +3535,8 @@ document.addEventListener("submit", (event) => {
     }
 
     const request = editingManagerId
-      ? updateManagerViaApi(editingManagerId, { login, password, name, phone, email, status })
-      : createManagerViaApi({ login, password, name, phone, email, status });
+      ? updateManagerViaApi(editingManagerId, { login, password, name, phone, email, status, canRecordClientPayments })
+      : createManagerViaApi({ login, password, name, phone, email, status, canRecordClientPayments });
 
     request
       .then(async (managerItem) => {
@@ -4115,12 +3572,9 @@ document.addEventListener("submit", (event) => {
   };
 
   updateCompanyViaApi(companyId, nextPayload)
-    .catch(() => {
+    .catch((error) => {
       setApiStatus("offline");
-      upsertCompany({
-        ...dataStore.companies.find((company) => company.companyId === companyId),
-        ...nextPayload,
-      });
+      window.alert(error.message || "Не удалось обновить компанию в базе данных.");
     })
     .finally(() => {
       editingCompanyId = null;
@@ -4138,10 +3592,77 @@ searchInput.addEventListener("input", (event) => {
   renderDocuments();
 });
 
+document.addEventListener("click", (event) => {
+  const sortButton = event.target.closest("[data-client-sort]");
+  if (sortButton) {
+    const nextKey = sortButton.dataset.clientSort;
+    if (clientDirectorySort.key !== nextKey) {
+      clientDirectorySort = { key: nextKey, direction: "asc" };
+    } else if (clientDirectorySort.direction === "asc") {
+      clientDirectorySort = { key: nextKey, direction: "desc" };
+    } else {
+      clientDirectorySort = { key: "", direction: "asc" };
+    }
+
+    renderClients();
+    persistNavigationState();
+    return;
+  }
+
+  const openClientRowButton = event.target.closest("[data-open-client-row]");
+  if (openClientRowButton) {
+    selectedClientRowId = openClientRowButton.dataset.openClientRow;
+    renderClients();
+    persistNavigationState();
+    return;
+  }
+
+  const backToClientsButton = event.target.closest("[data-back-to-clients]");
+  if (backToClientsButton) {
+    selectedClientRowId = null;
+    renderClients();
+    persistNavigationState();
+    return;
+  }
+
+  const openRequestButton = event.target.closest("[data-open-request]");
+  if (openRequestButton && !event.target.closest('[data-save-request-status], [data-request-status-select], [data-request-cancel-comment], [data-request-client-rework], [data-request-client-accept]')) {
+    selectedRequestCode = openRequestButton.dataset.openRequest;
+    renderRequestsTable();
+    persistNavigationState();
+    return;
+  }
+
+  const backToRequestsButton = event.target.closest("[data-back-to-requests]");
+  if (backToRequestsButton) {
+    selectedRequestCode = null;
+    renderRequestsTable();
+    persistNavigationState();
+    return;
+  }
+});
+
 refreshButton.addEventListener("click", async () => {
   if (canAccessView("managers")) {
     await syncManagersFromApi();
   }
+  await syncRequestsFromApi();
+  renderAll();
+  persistNavigationState();
+});
+
+newRequestButton?.addEventListener("click", () => {
+  if (isClientRole()) {
+    const requestTarget = getRequestTargetUnit();
+    if (!requestTarget) {
+      window.alert("Для заявки нужна привязанная квартира.");
+      return;
+    }
+    openClientRequestModal(requestTarget);
+    return;
+  }
+
+  setView("requests");
   renderAll();
   persistNavigationState();
 });
@@ -4198,10 +3719,12 @@ authForm.addEventListener("submit", async (event) => {
       applyAdminSession(session);
     }
 
+    await syncPropertiesFromApi();
+    await syncRequestsFromApi();
+
     if (currentUser.role !== "client") {
       await syncCompaniesFromApi();
       await syncManagersFromApi();
-      await syncPropertiesFromApi();
     }
     closeAuthModal();
     ensureAccessibleView();
@@ -4223,14 +3746,29 @@ addPropertyButton.addEventListener("click", () => {
 
 closePropertyModalButton.addEventListener("click", closePropertyModal);
 cancelPropertyModalButton.addEventListener("click", closePropertyModal);
+closeClientRequestModalButton?.addEventListener("click", closeClientRequestModal);
+cancelClientRequestModalButton?.addEventListener("click", closeClientRequestModal);
 cancelArchiveConfirmButton.addEventListener("click", closeArchiveConfirmModal);
 closeAidatPaymentModalButton.addEventListener("click", closeAidatPaymentModal);
 cancelAidatPaymentModalButton.addEventListener("click", closeAidatPaymentModal);
+closeUnitEditModalButton?.addEventListener("click", closeUnitEditModal);
+cancelUnitEditModalButton?.addEventListener("click", closeUnitEditModal);
 
 propertyModal.addEventListener("click", (event) => {
   if (event.target === propertyModal) {
     closePropertyModal();
   }
+});
+
+clientRequestModal?.addEventListener("click", (event) => {
+  if (event.target === clientRequestModal) {
+    closeClientRequestModal();
+  }
+});
+
+clientRequestUnitSelect?.addEventListener("change", (event) => {
+  const requestTarget = getRequestTargetUnit(String(event.target.value || "").trim());
+  renderClientRequestRouting(requestTarget);
 });
 
 archiveConfirmModal.addEventListener("click", (event) => {
@@ -4242,6 +3780,47 @@ archiveConfirmModal.addEventListener("click", (event) => {
 aidatPaymentModal.addEventListener("click", (event) => {
   if (event.target === aidatPaymentModal) {
     closeAidatPaymentModal();
+  }
+});
+
+unitEditModal?.addEventListener("click", (event) => {
+  if (event.target === unitEditModal) {
+    closeUnitEditModal();
+  }
+});
+
+clientRequestForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const selectedUnitCode = String(clientRequestUnitSelect?.value || "").trim();
+  const requestTarget = getRequestTargetUnit(selectedUnitCode);
+  if (!requestTarget) {
+    clientRequestMessage.textContent = "Для заявки нужна привязанная квартира.";
+    return;
+  }
+
+  const description = String(clientRequestDescriptionInput?.value || "").trim();
+  if (!description) {
+    clientRequestMessage.textContent = "Введите текст заявки.";
+    return;
+  }
+
+  clientRequestMessage.textContent = "Отправляем заявку...";
+
+  try {
+    const attachmentUrl = await readFileAsDataUrl(clientRequestPhotoInput?.files?.[0]);
+    await createRequestViaApi({
+      unitCode: requestTarget.unit.code || requestTarget.unit.id,
+      description,
+      attachmentUrl,
+    });
+    await syncRequestsFromApi();
+    closeClientRequestModal();
+    setView("dashboard");
+    renderAll();
+  } catch (error) {
+    setApiStatus("offline");
+    clientRequestMessage.textContent = error.message || "Не удалось отправить заявку.";
   }
 });
 
@@ -4285,22 +3864,8 @@ aidatPaymentForm.addEventListener("submit", async (event) => {
     renderProperties();
     return;
   } catch (error) {
-    try {
-      setApiStatus("offline");
-      applyLocalAidatPayment(selectedUnit, paymentInput);
-      selectedProperty.totalBalances = aggregateBalances(
-        selectedProperty.units.map((unit) => getUnitBalances(unit))
-      );
-      persistDataStore();
-      closeAidatPaymentModal();
-      renderSummary();
-      renderProperties();
-      return;
-    } catch (localError) {
-      setApiStatus("offline");
-      aidatPaymentMessage.textContent =
-        localError.message || "Не удалось добавить оплату айдата.";
-    }
+    setApiStatus("offline");
+    aidatPaymentMessage.textContent = error.message || "Не удалось добавить оплату айдата в базу данных.";
   }
 });
 
@@ -4329,29 +3894,8 @@ propertyForm.addEventListener("submit", async (event) => {
     propertyFormMessage.textContent = `Объект ${createdProperty.title} добавлен через API с ID ${createdProperty.code}.`;
   } catch (error) {
     setApiStatus("offline");
-    const propertyId = nextPropertyId();
-    const propertyCode = nextPropertyCode();
-    dataStore.properties.unshift({
-      id: propertyId,
-      code: propertyCode,
-      ...newProperty,
-      units: Array.from({ length: unitCount }, (_, index) => {
-        const rowNumber = index + 1;
-        return {
-          id: `${propertyId}-U${rowNumber}`,
-          code: `${propertyCode}-U${rowNumber}`,
-          number: String(rowNumber),
-          area: 0,
-          floor: "-",
-          debt: 0,
-          residents: 0,
-          status: "new",
-          owners: [],
-        };
-      }),
-    });
-    persistDataStore();
-    propertyFormMessage.textContent = `API недоступен. Объект ${newProperty.title} сохранен локально.`;
+    propertyFormMessage.textContent = error.message || `Не удалось сохранить объект ${newProperty.title} в базу данных.`;
+    return;
   }
 
   selectedPropertyId = null;
@@ -4380,9 +3924,9 @@ propertiesGrid.addEventListener("click", async (event) => {
     return;
   }
 
-  const unitButton = event.target.closest("[data-open-unit]");
-  if (unitButton) {
-    selectedUnitId = unitButton.dataset.openUnit;
+  const openUnitTarget = event.target.closest("[data-open-unit], [data-open-unit-card]");
+  if (openUnitTarget) {
+    selectedUnitId = openUnitTarget.dataset.openUnit || openUnitTarget.dataset.openUnitCard;
     renderProperties();
     persistNavigationState();
     return;
@@ -4394,6 +3938,24 @@ propertiesGrid.addEventListener("click", async (event) => {
     const unit = getUnitById(selectedProperty, addAidatPaymentButton.dataset.addAidatPayment);
     if (!selectedProperty || !unit) return;
     openAidatPaymentModal(selectedProperty, unit);
+    return;
+  }
+
+  const editUnitDetailsButton = event.target.closest("[data-edit-unit-details]");
+  if (editUnitDetailsButton) {
+    const selectedProperty = getPropertyById(selectedPropertyId);
+    const unit = getUnitById(selectedProperty, editUnitDetailsButton.dataset.editUnitDetails);
+    if (!selectedProperty || !unit) return;
+    setOwnerDraftCount(unit, (unit.owners || []).length || 1);
+    openUnitEditModal(selectedProperty, unit);
+    return;
+  }
+
+  const editUnitProfileButton = event.target.closest("[data-edit-unit-profile]");
+  if (editUnitProfileButton) {
+    editingUnitProfileId = editUnitProfileButton.dataset.editUnitProfile;
+    renderProperties();
+    persistNavigationState();
     return;
   }
 
@@ -4428,12 +3990,8 @@ adminPanelGrid?.addEventListener("click", async (event) => {
     await restorePropertyViaApi(property.code, targetCompanyId);
   } catch (error) {
     setApiStatus("offline");
-    property.status = "active";
-    property.companyId = targetCompanyId || property.companyId;
-    property.companyName =
-      dataStore.companies.find((company) => company.companyId === (targetCompanyId || property.companyId))?.title ||
-      property.companyName;
-    persistDataStore();
+    window.alert(error.message || "Не удалось восстановить объект в базе данных.");
+    return;
   }
 
   delete archiveRestoreTargets[property.id];
@@ -4478,8 +4036,8 @@ propertiesOverview.addEventListener("click", async (event) => {
     await restorePropertyViaApi(property.code);
   } catch (error) {
     setApiStatus("offline");
-    property.status = "active";
-    persistDataStore();
+    window.alert(error.message || "Не удалось восстановить объект в базе данных.");
+    return;
   }
 
   selectedPropertyId = null;
@@ -4500,8 +4058,8 @@ confirmArchiveButton.addEventListener("click", async () => {
     await archivePropertyViaApi(property.code);
   } catch (error) {
     setApiStatus("offline");
-    property.status = "archived";
-    persistDataStore();
+    window.alert(error.message || "Не удалось отправить объект в архив в базе данных.");
+    return;
   }
 
   closeArchiveConfirmModal();
@@ -4525,6 +4083,75 @@ propertiesGrid.addEventListener("change", (event) => {
   persistNavigationState();
 });
 
+propertiesGrid.addEventListener("input", (event) => {
+  const phoneInput = event.target.closest("[data-owner-phone-local]");
+  if (!phoneInput) return;
+  phoneInput.value = normalizePhoneLocalNumber(phoneInput.value);
+});
+
+unitEditForm?.addEventListener("change", (event) => {
+  const ownerCountSelect = event.target.closest("[data-unit-edit-owner-count]");
+  if (!ownerCountSelect) return;
+  const selectedProperty = getPropertyById(selectedPropertyId);
+  const selectedUnit = getUnitById(selectedProperty, ownerCountSelect.dataset.unitEditOwnerCount || pendingUnitEditUnitId);
+  if (!selectedUnit) return;
+  setOwnerDraftCount(selectedUnit, ownerCountSelect.value);
+  openUnitEditModal(selectedProperty, selectedUnit);
+});
+
+unitEditForm?.addEventListener("input", (event) => {
+  const phoneInput = event.target.closest("[data-owner-phone-local]");
+  if (!phoneInput) return;
+  phoneInput.value = normalizePhoneLocalNumber(phoneInput.value);
+});
+
+unitEditForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const selectedProperty = getPropertyById(selectedPropertyId);
+  const selectedUnit = getUnitById(selectedProperty, pendingUnitEditUnitId);
+  if (!selectedProperty || !selectedUnit) return;
+
+  const formData = new FormData(unitEditForm);
+  const nextProfile = {
+    floor: String(formData.get("floor") || "").trim() || "-",
+    area: Number(formData.get("area")) || 0,
+    layoutType: String(formData.get("layoutType") || "").trim(),
+    layoutFeature: String(formData.get("layoutFeature") || "").trim(),
+    waterAccountNumber: String(formData.get("waterAccountNumber") || "").trim(),
+    electricityAccountNumber: String(formData.get("electricityAccountNumber") || "").trim(),
+  };
+  const ownerCount = Math.max(1, Number(formData.get("ownerCount")) || 1);
+  const owners = Array.from({ length: ownerCount }, (_, index) => {
+    const currentOwner = selectedUnit.owners[index];
+    const name = String(formData.get(`ownerName-${index}`) || "").trim();
+    const phoneCountryCode = normalizePhoneCountryCode(String(formData.get(`ownerPhoneCountry-${index}`) || "+90"));
+    const phoneLocalNumber = normalizePhoneLocalNumber(String(formData.get(`ownerPhoneLocal-${index}`) || ""));
+    const share = String(formData.get(`ownerShare-${index}`) || "").trim();
+    return {
+      clientId: currentOwner?.clientId || `OWN-${selectedUnit.id}-${index + 1}`,
+      name: name || `Собственник ${index + 1}`,
+      phone: formatPhone(phoneCountryCode, phoneLocalNumber),
+      phoneCountryCode,
+      phoneLocalNumber,
+      telegramId: String(formData.get(`ownerTelegramId-${index}`) || "").trim(),
+      share: share || "",
+    };
+  });
+
+  unitEditMessage.textContent = "Сохраняем в базу данных...";
+  try {
+    await saveUnitProfileViaApi(selectedUnit.code || selectedUnit.id, nextProfile);
+    await saveOwnersViaApi(selectedUnit.code || selectedUnit.id, owners);
+    closeUnitEditModal();
+    renderProperties();
+    renderSummary();
+    persistNavigationState();
+  } catch (error) {
+    setApiStatus("offline");
+    unitEditMessage.textContent = error.message || "Не удалось сохранить помещение в базе данных.";
+  }
+});
+
 propertiesGrid.addEventListener("submit", async (event) => {
   const unitProfileForm = event.target.closest("[data-unit-profile-form]");
   if (unitProfileForm) {
@@ -4545,22 +4172,16 @@ propertiesGrid.addEventListener("submit", async (event) => {
 
     try {
       await saveUnitProfileViaApi(selectedUnit.code || selectedUnit.id, nextProfile);
+      editingUnitProfileId = null;
       const profileMessage = unitProfileForm.querySelector("[data-unit-profile-message]");
       if (profileMessage) {
         profileMessage.textContent = "Параметры квартиры обновлены через API.";
       }
     } catch (error) {
       setApiStatus("offline");
-      selectedUnit.floor = nextProfile.floor;
-      selectedUnit.area = nextProfile.area;
-      selectedUnit.layoutType = nextProfile.layoutType;
-      selectedUnit.layoutFeature = nextProfile.layoutFeature;
-      selectedUnit.waterAccountNumber = nextProfile.waterAccountNumber;
-      selectedUnit.electricityAccountNumber = nextProfile.electricityAccountNumber;
-      persistDataStore();
       const profileMessage = unitProfileForm.querySelector("[data-unit-profile-message]");
       if (profileMessage) {
-        profileMessage.textContent = "API недоступен. Параметры квартиры обновлены локально.";
+        profileMessage.textContent = error.message || "Не удалось обновить параметры квартиры в базе данных.";
       }
     }
 
@@ -4582,13 +4203,20 @@ propertiesGrid.addEventListener("submit", async (event) => {
   const owners = Array.from({ length: ownerCount }, (_, index) => {
     const currentOwner = selectedUnit.owners[index];
     const name = String(formData.get(`ownerName-${index}`) || "").trim();
-    const phone = String(formData.get(`ownerPhone-${index}`) || "").trim();
+    const phoneCountryCode = normalizePhoneCountryCode(
+      String(formData.get(`ownerPhoneCountry-${index}`) || "+90")
+    );
+    const phoneLocalNumber = normalizePhoneLocalNumber(
+      String(formData.get(`ownerPhoneLocal-${index}`) || "")
+    );
     const share = String(formData.get(`ownerShare-${index}`) || "").trim();
 
     return {
       clientId: currentOwner?.clientId || `OWN-${selectedUnit.id}-${index + 1}`,
       name: name || `Собственник ${index + 1}`,
-      phone: phone || "не заполнено",
+      phone: formatPhone(phoneCountryCode, phoneLocalNumber),
+      phoneCountryCode,
+      phoneLocalNumber,
       telegramId: String(formData.get(`ownerTelegramId-${index}`) || "").trim(),
       share: share || "",
     };
@@ -4602,17 +4230,9 @@ propertiesGrid.addEventListener("submit", async (event) => {
     }
   } catch (error) {
     setApiStatus("offline");
-    selectedUnit.owners = owners;
-    ownerEditorDrafts[selectedUnit.id] = owners.map((owner, index) =>
-      normalizeOwner(owner, index)
-    );
-    owners.forEach((owner) => {
-      upsertClientRecordFromOwner(owner, selectedProperty?.title || "");
-    });
-    persistDataStore();
     const ownerMessage = ownerForm.querySelector("[data-owner-message]");
     if (ownerMessage) {
-      ownerMessage.textContent = "API недоступен. Состав собственников обновлен локально.";
+      ownerMessage.textContent = error.message || "Не удалось обновить состав собственников в базе данных.";
     }
   }
 
@@ -4671,10 +4291,12 @@ async function bootstrapAdminCabinet() {
   }
 
   if (currentUser) {
+    await syncPropertiesFromApi();
+    await syncRequestsFromApi();
+
     if (currentUser.role !== "client") {
       await syncCompaniesFromApi();
       await syncManagersFromApi();
-      await syncPropertiesFromApi();
     }
   } else {
     openAuthModal();

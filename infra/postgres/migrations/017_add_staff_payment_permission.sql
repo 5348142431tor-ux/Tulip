@@ -1,0 +1,2 @@
+ALTER TABLE staff
+ADD COLUMN IF NOT EXISTS can_record_client_payments BOOLEAN NOT NULL DEFAULT FALSE;

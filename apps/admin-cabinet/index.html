@@ -340,6 +340,40 @@
       </div>
     </div>
 
+    <div id="client-request-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-client-request">
+      <div class="modal-card modal-card-compact" data-ui-id="card-client-request">
+        <div class="modal-head" data-ui-id="head-client-request">
+          <div>
+            <p class="eyebrow">Client Request</p>
+            <h3>Дать заявку</h3>
+          </div>
+          <div class="modal-head-actions">
+            <button id="close-client-request-modal" class="ghost-button" data-ui-id="btn-close-client-request-modal">Закрыть</button>
+          </div>
+        </div>
+        <form id="client-request-form" class="form-grid" data-ui-id="form-client-request">
+          <label id="client-request-unit-field" class="field field-full is-hidden">
+            <span>Комплекс и квартира</span>
+            <select id="client-request-unit-select" name="unitCode"></select>
+          </label>
+          <div id="client-request-routing" class="request-routing-note field-full"></div>
+          <label class="field field-full">
+            <span>Текст заявки</span>
+            <textarea id="client-request-description" name="description" rows="6" placeholder="Опишите проблему или задачу" required></textarea>
+          </label>
+          <label class="field field-full">
+            <span>Фото</span>
+            <input id="client-request-photo" name="photo" type="file" accept="image/*" />
+          </label>
+          <div class="modal-actions field-full">
+            <div id="client-request-message" class="form-message"></div>
+            <button type="button" id="cancel-client-request-modal" class="ghost-button">Закрыть</button>
+            <button type="submit" id="submit-client-request" class="primary-button">Отправить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="archive-confirm-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-property-archive-confirm">
       <div class="modal-card modal-card-compact" data-ui-id="card-property-archive-confirm">
         <div class="modal-head" data-ui-id="head-property-archive-confirm">
@@ -437,6 +471,29 @@
             <button type="submit" class="primary-button" data-ui-id="btn-submit-aidat-payment">
               Сохранить оплату
             </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
+    <div id="unit-edit-modal" class="modal-backdrop is-hidden" aria-hidden="true" data-ui-id="modal-unit-edit">
+      <div class="modal-card" data-ui-id="card-unit-edit">
+        <div class="modal-head" data-ui-id="head-unit-edit">
+          <div>
+            <p class="eyebrow">Unit Edit</p>
+            <h3 id="unit-edit-title">Редактировать помещение</h3>
+          </div>
+          <div class="modal-head-actions">
+            <button id="close-unit-edit-modal" class="ghost-button" data-ui-id="btn-close-unit-edit-modal">Закрыть</button>
+          </div>
+        </div>
+        <form id="unit-edit-form" class="form-grid" data-ui-id="form-unit-edit">
+          <div id="unit-edit-fields" class="field field-full"></div>
+          <div class="modal-actions field-full" data-ui-id="actions-unit-edit">
+            <div id="unit-edit-message" class="form-message" data-ui-id="message-unit-edit"></div>
+            <button type="button" id="cancel-unit-edit-modal" class="ghost-button" data-ui-id="btn-cancel-unit-edit-modal">Отмена</button>
+            <button type="submit" class="primary-button" data-ui-id="btn-submit-unit-edit">Сохранить</button>
           </div>
         </form>
       </div>

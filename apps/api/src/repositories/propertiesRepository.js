@@ -3,6 +3,7 @@ import {
   DECREASE_UNIT_BALANCE_SQL,
   DELETE_UNIT_OWNERSHIPS_SQL,
   FIND_CLIENT_BY_CODE_SQL,
+  FIND_CLIENT_BY_PHONE_SQL,
   FIND_EXISTING_AIDAT_CHARGE_SQL,
   INSERT_CLIENT_SQL,
   INSERT_ACTIVITY_LOG_SQL,
@@ -27,8 +28,6 @@ import {
 } from "../sql/properties.js";
 import { query, withTransaction } from "../db.js";
 
-const MANAGEMENT_COMPANY_CODE = "MC-001";
-
 function toMonthStorageValue(value) {
   if (!value) return null;
   const normalized = String(value).trim();
@@ -44,17 +43,75 @@ function toMonthDisplayValue(value) {
   return normalized;
 }
 
-async function getManagementCompanyId(client) {
+function normalizePhone(value) {
+  const normalized = String(value || "")
+    .replace(/[^\d+]/g, "")
+    .trim();
+
+  if (!normalized) return null;
+  if (normalized.startsWith("+")) return normalized;
+  return `+${normalized}`;
+}
+
+async function getCompanyIdByCode(client, companyCode) {
+  const normalizedCode = String(companyCode || "").trim().toUpperCase();
+  if (!normalizedCode) {
+    const error = new Error("Management company code is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
   const result = await client.query(
-    "SELECT id FROM management_companies WHERE code = $1 LIMIT 1",
-    [MANAGEMENT_COMPANY_CODE]
+    "SELECT id FROM management_companies WHERE UPPER(code) = $1 LIMIT 1",
+    [normalizedCode]
   );
 
   if (!result.rows[0]?.id) {
-    throw new Error("Management company seed was not found");
+    const error = new Error("Management company was not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   return result.rows[0].id;
+}
+
+async function getPropertyCompanyContext(client, propertyCode) {
+  const result = await client.query(
+    `SELECT p.id, mc.id AS management_company_id, mc.code AS management_company_code
+     FROM properties p
+     INNER JOIN management_companies mc ON mc.id = p.management_company_id
+     WHERE p.code = $1
+     LIMIT 1`,
+    [propertyCode]
+  );
+
+  if (!result.rows[0]?.id) {
+    const error = new Error("Property not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return result.rows[0];
+}
+
+async function getUnitCompanyContext(client, unitCode) {
+  const result = await client.query(
+    `SELECT u.id, u.code, p.code AS property_code, mc.id AS management_company_id, mc.code AS management_company_code
+     FROM units u
+     INNER JOIN properties p ON p.id = u.property_id
+     INNER JOIN management_companies mc ON mc.id = p.management_company_id
+     WHERE u.code = $1
+     LIMIT 1`,
+    [unitCode]
+  );
+
+  if (!result.rows[0]?.id) {
+    const error = new Error("Unit not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return result.rows[0];
 }
 
 function mapPropertyListRow(row) {
@@ -73,6 +130,7 @@ function mapPropertyListRow(row) {
     aidatCurrencyCode: row.aidat_currency_code || "TRY",
     status: row.status,
     unitCount: Number(row.unit_count),
+    managerId: row.manager_code || "",
     manager: row.manager_name || "",
     totalBalances: Array.isArray(row.total_balances)
       ? row.total_balances.map((item) => ({
@@ -140,6 +198,7 @@ function mapPropertyDetail(rows) {
     aidatCurrencyCode: first.aidat_currency_code || "TRY",
     status: first.property_status,
     unitCount: Number(first.unit_count || 0),
+    managerId: first.manager_code || "",
     manager: first.manager_name || "",
     units: Array.from(unitsMap.values()),
     totalBalances: [],
@@ -257,6 +316,9 @@ async function attachUnitPaymentLogs(property) {
       receivedDate: row.payload?.receivedDate || "",
       recordedAt: row.created_at,
       note: row.payload?.note || "Оплата айдата",
+      recordedByRole: row.payload?.recordedByRole || "",
+      recordedById: row.payload?.recordedById || "",
+      recordedByName: row.payload?.recordedByName || "",
     });
     logsMap.set(row.entity_id, list);
   });
@@ -326,9 +388,11 @@ export async function getPropertyByCode(propertyCode) {
 
 export async function createProperty(payload) {
   return withTransaction(async (client) => {
-    const companyId = await getManagementCompanyId(client);
     const staffResult = await client.query(STAFF_LOOKUP_SQL, [payload.manager]);
-    const staffId = staffResult.rows[0]?.id || null;
+    const managerRow = staffResult.rows[0] || null;
+    const companyCode = payload.companyCode || managerRow?.management_company_code || "";
+    const companyId = await getCompanyIdByCode(client, companyCode);
+    const staffId = managerRow?.id || null;
 
     const propertyInsert = await client.query(INSERT_PROPERTY_SQL, [
       companyId,
@@ -377,7 +441,8 @@ function fallbackClientCode(unitCode, index) {
 
 export async function updateUnitOwners(unitCode, owners) {
   return withTransaction(async (client) => {
-    const companyId = await getManagementCompanyId(client);
+    const unitContext = await getUnitCompanyContext(client, unitCode);
+    const companyId = unitContext.management_company_id;
     const unitResult = await client.query(LOOKUP_UNIT_SQL, [unitCode]);
     const unit = unitResult.rows[0];
 
@@ -392,24 +457,36 @@ export async function updateUnitOwners(unitCode, owners) {
     for (let index = 0; index < owners.length; index += 1) {
       const owner = owners[index];
       const clientCode = owner.code || fallbackClientCode(unit.code, index);
+      const normalizedPhone = normalizePhone(owner.phone);
 
       let clientId;
-      const existingClient = await client.query(FIND_CLIENT_BY_CODE_SQL, [clientCode]);
+      let existingClient = null;
+
+      if (normalizedPhone) {
+        existingClient = await client.query(FIND_CLIENT_BY_PHONE_SQL, [companyId, normalizedPhone]);
+      }
+
+      if (!existingClient?.rows?.[0]?.id) {
+        existingClient = await client.query(FIND_CLIENT_BY_CODE_SQL, [clientCode]);
+      }
 
       if (existingClient.rows[0]?.id) {
         clientId = existingClient.rows[0].id;
         await client.query(
           `UPDATE clients
-           SET full_name = $2, phone = $3, telegram_id = $4, updated_at = NOW()
+           SET full_name = $2,
+               phone = COALESCE($3, phone),
+               telegram_id = COALESCE($4, telegram_id),
+               updated_at = NOW()
            WHERE id = $1`,
-          [clientId, owner.name, owner.phone || null, owner.telegramId || null]
+          [clientId, owner.name, normalizedPhone, owner.telegramId || null]
         );
       } else {
         const insertedClient = await client.query(INSERT_CLIENT_SQL, [
           companyId,
           clientCode,
           owner.name,
-          owner.phone || null,
+          normalizedPhone,
           owner.telegramId || null,
         ]);
         clientId = insertedClient.rows[0].id;
@@ -585,7 +662,8 @@ export async function updateUnitProfile(unitCode, payload) {
 
 export async function updatePropertyFinance(propertyCode, payload) {
   return withTransaction(async (client) => {
-    const companyId = await getManagementCompanyId(client);
+    const propertyContext = await getPropertyCompanyContext(client, propertyCode);
+    const companyId = propertyContext.management_company_id;
     const result = await client.query(UPDATE_PROPERTY_FINANCE_SQL, [
       propertyCode,
       payload.aidatCalculationMode || "equal_for_all",
@@ -672,7 +750,8 @@ export async function updatePropertyFinance(propertyCode, payload) {
 
 export async function addAidatPayment(unitCode, payload) {
   return withTransaction(async (client) => {
-    const companyId = await getManagementCompanyId(client);
+    const unitContext = await getUnitCompanyContext(client, unitCode);
+    const companyId = unitContext.management_company_id;
     const unitResult = await client.query(LOOKUP_UNIT_SQL, [unitCode]);
     const unit = unitResult.rows[0];
 
@@ -731,6 +810,9 @@ export async function addAidatPayment(unitCode, payload) {
         currency,
         receivedDate: payload.receivedDate || null,
         note: "Оплата айдата",
+        recordedByRole: payload.actorRole || "",
+        recordedById: payload.actorId || "",
+        recordedByName: payload.actorName || "",
       }),
     ]);
 

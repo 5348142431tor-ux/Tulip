@@ -66,6 +66,7 @@ export async function managerRoutes(fastify) {
       phone: body.phone,
       email: body.email,
       status: body.status,
+      canRecordClientPayments: body.canRecordClientPayments,
     });
 
     reply.code(201);
@@ -95,6 +96,7 @@ export async function managerRoutes(fastify) {
         phone: body.phone,
         email: body.email,
         status: body.status,
+        canRecordClientPayments: body.canRecordClientPayments,
       }),
     };
   });

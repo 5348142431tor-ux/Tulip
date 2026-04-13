@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS staff (
   telegram_id TEXT,
   password_hash TEXT,
   must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
+  can_record_client_payments BOOLEAN NOT NULL DEFAULT FALSE,
   status TEXT NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -126,6 +127,7 @@ CREATE TABLE IF NOT EXISTS charges (
 
 CREATE TABLE IF NOT EXISTS requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_number BIGSERIAL NOT NULL UNIQUE,
   management_company_id UUID NOT NULL REFERENCES management_companies(id) ON DELETE RESTRICT,
   code TEXT NOT NULL UNIQUE,
   unit_id UUID REFERENCES units(id) ON DELETE SET NULL,
@@ -136,10 +138,31 @@ CREATE TABLE IF NOT EXISTS requests (
   description TEXT,
   priority TEXT NOT NULL DEFAULT 'low',
   status TEXT NOT NULL DEFAULT 'new',
+  client_decision_pending BOOLEAN NOT NULL DEFAULT FALSE,
   assigned_staff_id UUID REFERENCES staff(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   closed_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS request_rework_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+  comment_number INTEGER NOT NULL,
+  client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+  comment_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (request_id, comment_number)
+);
+
+CREATE TABLE IF NOT EXISTS request_status_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  request_id UUID NOT NULL REFERENCES requests(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  actor_role TEXT,
+  actor_name TEXT,
+  note TEXT,
+  changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS documents (
@@ -175,5 +198,7 @@ CREATE INDEX IF NOT EXISTS idx_ownerships_unit ON ownerships(unit_id);
 CREATE INDEX IF NOT EXISTS idx_ownerships_client ON ownerships(client_id);
 CREATE INDEX IF NOT EXISTS idx_requests_unit ON requests(unit_id);
 CREATE INDEX IF NOT EXISTS idx_requests_client ON requests(client_id);
+CREATE INDEX IF NOT EXISTS idx_request_rework_comments_request ON request_rework_comments(request_id, comment_number);
+CREATE INDEX IF NOT EXISTS idx_request_status_logs_request ON request_status_logs(request_id, changed_at);
 CREATE INDEX IF NOT EXISTS idx_charges_unit ON charges(unit_id);
 CREATE INDEX IF NOT EXISTS idx_documents_property ON documents(property_id);

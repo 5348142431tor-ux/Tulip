@@ -18,9 +18,11 @@ export function getRequestAccess(request) {
     role: session.user.role,
     userName: session.user.name,
     userId: session.user.id,
+    clientId: session.user.clientId || null,
     roleLabel: session.user.roleLabel,
     roleInfo: session.user.roleInfo,
     company: session.user.company || null,
+    canRecordClientPayments: Boolean(session.user.canRecordClientPayments),
     impersonator: session.impersonator || null,
   };
 }
@@ -78,10 +80,28 @@ export function assertPropertyCreateAccess(request) {
 export function assertPropertyReadAccess(request, property) {
   const access = getRequestAccess(request);
 
+  if (access.role === "client") {
+    const hasClientOwnership = Array.isArray(property?.units)
+      && property.units.some((unit) =>
+        Array.isArray(unit?.owners)
+        && unit.owners.some((owner) => owner?.code === access.clientId)
+      );
+
+    if (!hasClientOwnership) {
+      throw forbidden(`${getRoleLabel(access.role)} cannot view this property`);
+    }
+
+    return access;
+  }
+
   if (!canReadProperty({
     role: access.role,
     propertyManagerName: property?.manager || "",
     currentUserName: access.userName,
+    propertyManagerId: property?.managerId || "",
+    currentUserId: access.userId,
+    propertyCompanyCode: property?.companyId || "",
+    currentCompanyCode: access.company?.code || "",
   })) {
     throw forbidden(`${getRoleLabel(access.role)} cannot view this property`);
   }
@@ -96,9 +116,36 @@ export function assertPropertyManageAccess(request, property) {
     role: access.role,
     propertyManagerName: property?.manager || "",
     currentUserName: access.userName,
+    propertyManagerId: property?.managerId || "",
+    currentUserId: access.userId,
+    propertyCompanyCode: property?.companyId || "",
+    currentCompanyCode: access.company?.code || "",
   })) {
     throw forbidden(`${getRoleLabel(access.role)} cannot manage this property`);
   }
 
   return access;
+}
+
+export function assertAidatPaymentAccess(request, property) {
+  const access = getRequestAccess(request);
+
+  if (access.role === "project_owner") return access;
+
+  if (access.role === "company_admin") {
+    if ((property?.companyId || "") === (access.company?.code || "")) {
+      return access;
+    }
+    throw forbidden(`${getRoleLabel(access.role)} cannot add aidat payments for this property`);
+  }
+
+  if (
+    access.role === "manager"
+    && access.canRecordClientPayments
+    && property?.managerId === access.userId
+  ) {
+    return access;
+  }
+
+  throw forbidden(`${getRoleLabel(access.role)} cannot add aidat payments for this property`);
 }

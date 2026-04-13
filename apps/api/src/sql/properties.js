@@ -14,6 +14,7 @@ export const LIST_PROPERTIES_SQL = `
     p.aidat_currency_code,
     p.status,
     p.unit_count,
+    s.code AS manager_code,
     s.full_name AS manager_name,
     COALESCE(
       (
@@ -40,7 +41,7 @@ export const LIST_PROPERTIES_SQL = `
   INNER JOIN management_companies mc ON mc.id = p.management_company_id
   LEFT JOIN staff s ON s.id = p.manager_staff_id
   WHERE ($1::boolean = TRUE OR p.status <> 'archived')
-  GROUP BY p.id, mc.code, mc.name, s.full_name
+  GROUP BY p.id, mc.code, mc.name, s.code, s.full_name
   ORDER BY p.code;
 `;
 
@@ -60,6 +61,7 @@ export const PROPERTY_DETAIL_SQL = `
     p.aidat_currency_code,
     p.status AS property_status,
     p.unit_count,
+    s.code AS manager_code,
     s.full_name AS manager_name,
     u.id AS unit_id,
     u.code AS unit_code,
@@ -111,9 +113,10 @@ export const LIST_PROPERTY_UNIT_BALANCES_SQL = `
 `;
 
 export const STAFF_LOOKUP_SQL = `
-  SELECT id, code, full_name
-  FROM staff
-  WHERE full_name = $1 OR code = $1
+  SELECT s.id, s.code, s.full_name, mc.code AS management_company_code
+  FROM staff s
+  INNER JOIN management_companies mc ON mc.id = s.management_company_id
+  WHERE s.full_name = $1 OR s.code = $1
   LIMIT 1;
 `;
 
@@ -357,6 +360,14 @@ export const FIND_CLIENT_BY_CODE_SQL = `
   SELECT id
   FROM clients
   WHERE code = $1
+  LIMIT 1;
+`;
+
+export const FIND_CLIENT_BY_PHONE_SQL = `
+  SELECT id
+  FROM clients
+  WHERE management_company_id = $1
+    AND phone = $2
   LIMIT 1;
 `;
 

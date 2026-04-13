@@ -4,9 +4,11 @@ import { verifyPassword } from "../auth/companyPassword.js";
 import { buildCompanyDescriptor, buildRoleDescriptor } from "../auth/accessModel.js";
 import {
   FIND_CLIENT_BY_CODE_SQL,
+  FIND_COMPANY_IMPERSONATION_TARGET_SQL,
   FIND_STAFF_AUTH_BY_LOGIN_SQL,
   FIND_STAFF_BY_CODE_SQL,
   LIST_CLIENT_IMPERSONATION_TARGETS_SQL,
+  LIST_COMPANY_IMPERSONATION_TARGETS_SQL,
   LIST_STAFF_IMPERSONATION_TARGETS_SQL,
 } from "../sql/adminAuth.js";
 
@@ -55,6 +57,7 @@ function mapStaffUser(row) {
     actorType: "company_staff",
     company: mapCompany(row),
     mustChangePassword: Boolean(row.must_change_password),
+    canRecordClientPayments: Boolean(row.can_record_client_payments),
   };
 }
 
@@ -73,6 +76,31 @@ function mapClientUser(row) {
     roleInfo,
     actorType: "client",
     company: mapCompany(row),
+    mustChangePassword: false,
+  };
+}
+
+
+function mapCompanyImpersonationUser(row) {
+  const roleInfo = buildRoleDescriptor("company_admin", {
+    scope: "admin_cabinet",
+    actorType: "company",
+  });
+
+  return {
+    id: `COMPANY-${row.code}`,
+    companyId: row.code,
+    name: row.director_name || row.name,
+    role: roleInfo.code,
+    roleLabel: roleInfo.label,
+    roleInfo,
+    actorType: "company",
+    company: buildCompanyDescriptor({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      status: row.status || "active",
+    }),
     mustChangePassword: false,
   };
 }
@@ -132,6 +160,21 @@ export async function resolveImpersonationTarget(targetId) {
     return owner;
   }
 
+  if (normalizedTargetId.startsWith("COMPANY-")) {
+    const companyCode = normalizedTargetId.slice("COMPANY-".length);
+    const companyResult = await query(FIND_COMPANY_IMPERSONATION_TARGET_SQL, [companyCode]);
+    const companyRow = companyResult.rows[0];
+
+    if (!companyRow) {
+      const error = new Error("Company was not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    assertActive(companyRow, "Company account");
+    return mapCompanyImpersonationUser(companyRow);
+  }
+
   if (normalizedTargetId.startsWith("CLIENT-")) {
     const clientCode = normalizedTargetId.slice("CLIENT-".length);
     const clientResult = await query(FIND_CLIENT_BY_CODE_SQL, [clientCode]);
@@ -162,7 +205,8 @@ export async function resolveImpersonationTarget(targetId) {
 
 export async function listImpersonationTargets() {
   const owner = buildOwnerUser();
-  const [staffResult, clientResult] = await Promise.all([
+  const [companyResult, staffResult, clientResult] = await Promise.all([
+    query(LIST_COMPANY_IMPERSONATION_TARGETS_SQL),
     query(LIST_STAFF_IMPERSONATION_TARGETS_SQL),
     query(LIST_CLIENT_IMPERSONATION_TARGETS_SQL),
   ]);
@@ -177,6 +221,20 @@ export async function listImpersonationTargets() {
       companyName: "Tulip",
       status: "active",
     },
+    ...companyResult.rows
+      .filter((row) => String(row.status || "").toLowerCase() === "active")
+      .map((row) => {
+        const user = mapCompanyImpersonationUser(row);
+        return {
+          id: user.id,
+          name: user.name,
+          role: user.role,
+          roleLabel: user.roleLabel,
+          actorType: user.actorType,
+          companyName: user.company?.name || row.name || "",
+          status: "active",
+        };
+      }),
     ...staffResult.rows
       .filter((row) => String(row.status || "").toLowerCase() === "active")
       .map((row) => {

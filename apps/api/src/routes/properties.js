@@ -10,6 +10,7 @@ import {
   updateUnitOwners,
 } from "../repositories/propertiesRepository.js";
 import {
+  assertAidatPaymentAccess,
   assertPropertyCreateAccess,
   assertPropertyListAccess,
   assertPropertyManageAccess,
@@ -37,7 +38,14 @@ async function getManagedPropertyByUnitCode(unitCode) {
 
 function scopePropertiesForAccess(properties, access) {
   if (access.role === "manager") {
-    return properties.filter((property) => property.manager === access.userName);
+    return properties.filter(
+      (property) => property.managerId === access.userId
+        && property.companyId === (access.company?.code || "")
+    );
+  }
+
+  if (access.role === "company_admin") {
+    return properties.filter((property) => property.companyId === (access.company?.code || ""));
   }
 
   return properties;
@@ -51,6 +59,26 @@ export async function propertyRoutes(fastify) {
         request.query?.includeArchived === "1" ||
         request.query?.includeArchived === "true",
     });
+
+    if (access.role === "client") {
+      const visibleItems = [];
+
+      for (const property of properties) {
+        const detailedProperty = await getPropertyByCode(property.code);
+        try {
+          assertPropertyReadAccess(request, detailedProperty);
+          if (detailedProperty) {
+            visibleItems.push(detailedProperty);
+          }
+        } catch (error) {
+          if (error?.statusCode !== 403) {
+            throw error;
+          }
+        }
+      }
+
+      return { items: visibleItems };
+    }
 
     return { items: scopePropertiesForAccess(properties, access) };
   });
@@ -68,7 +96,7 @@ export async function propertyRoutes(fastify) {
   });
 
   fastify.post("/api/properties", async (request, reply) => {
-    assertPropertyCreateAccess(request);
+    const access = assertPropertyCreateAccess(request);
 
     const body = request.body || {};
     const currentProperties = await listProperties();
@@ -86,6 +114,7 @@ export async function propertyRoutes(fastify) {
       type: body.type || "residential_building",
       status: body.status || "active",
       manager: body.manager,
+      companyCode: access.company?.code || body.companyId || "",
       unitCount: Math.max(1, Number(body.unitCount) || 1),
     });
 
@@ -173,12 +202,15 @@ export async function propertyRoutes(fastify) {
       return { message: "Property not found" };
     }
 
-    assertPropertyManageAccess(request, property);
+    const access = assertAidatPaymentAccess(request, property);
 
     const updatedProperty = await addAidatPayment(request.params.unitCode, {
       amount: body.amount,
       currency: body.currency,
       receivedDate: body.receivedDate,
+      actorRole: access.role,
+      actorId: access.userId,
+      actorName: access.userName,
     });
     return { item: updatedProperty };
   });

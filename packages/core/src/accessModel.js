@@ -28,7 +28,7 @@ export const VIEW_ACCESS_BY_ROLE = {
   project_owner: ["dashboard", "admin-panel", "company-clients", "requests", "clients", "properties", "payments", "documents"],
   company_admin: ["dashboard", "managers", "properties", "clients", "payments", "requests"],
   manager: ["dashboard", "requests", "clients", "properties", "payments", "documents"],
-  client: ["properties"],
+  client: ["properties", "requests"],
 };
 
 export function getRoleLabel(role) {
@@ -52,7 +52,7 @@ export function getDefaultView(role, fallback = "dashboard") {
 }
 
 export function canCreateRequests(role) {
-  return ["project_owner", "company_admin", "manager"].includes(role);
+  return ["project_owner", "company_admin", "manager", "client"].includes(role);
 }
 
 export function canAddProperties(role) {
@@ -67,16 +67,43 @@ export function canReadCompanies(role) {
   return canManageCompanies(role);
 }
 
-export function canManageProperty({ role, propertyManagerName, currentUserName }) {
+export function canManageProperty({
+  role,
+  propertyManagerName,
+  currentUserName,
+  propertyManagerId,
+  currentUserId,
+  propertyCompanyCode,
+  currentCompanyCode,
+}) {
   if (!role) return false;
-  if (["project_owner", "company_admin"].includes(role)) return true;
-  return role === "manager" && propertyManagerName === currentUserName;
+  if (role === "project_owner") return true;
+  if (role === "company_admin") {
+    return Boolean(propertyCompanyCode) && propertyCompanyCode === currentCompanyCode;
+  }
+  return role === "manager"
+    && propertyManagerId === currentUserId
+    && Boolean(propertyCompanyCode)
+    && propertyCompanyCode === currentCompanyCode;
 }
 
-export function canReadProperty({ role, propertyManagerName, currentUserName }) {
+export function canReadProperty({
+  role,
+  propertyManagerName,
+  currentUserName,
+  propertyManagerId,
+  currentUserId,
+  propertyCompanyCode,
+  currentCompanyCode,
+}) {
   if (!role || !canAccessView(role, "properties")) return false;
+  if (role === "company_admin") {
+    return Boolean(propertyCompanyCode) && propertyCompanyCode === currentCompanyCode;
+  }
   if (role === "manager") {
-    return propertyManagerName === currentUserName;
+    return propertyManagerId === currentUserId
+      && Boolean(propertyCompanyCode)
+      && propertyCompanyCode === currentCompanyCode;
   }
   return role !== "client";
 }

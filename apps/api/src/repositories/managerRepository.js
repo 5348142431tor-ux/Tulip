@@ -21,6 +21,7 @@ function mapManagerRow(row) {
     status: row.status || "active",
     openRequests: Number(row.open_requests || 0),
     mustChangePassword: Boolean(row.must_change_password),
+    canRecordClientPayments: Boolean(row.can_record_client_payments),
     companyId: row.management_company_code || "",
     companyName: row.management_company_name || "",
   };
@@ -46,7 +47,7 @@ export async function listManagers(companyId = null) {
   return result.rows.map(mapManagerRow);
 }
 
-export async function createManager({ companyId, login, password, name, phone, email, status }) {
+export async function createManager({ companyId, login, password, name, phone, email, status, canRecordClientPayments }) {
   const nextCompanyId = String(companyId || "").trim();
   const nextLogin = normalizeLogin(login);
   const nextPassword = normalizePassword(password);
@@ -79,6 +80,7 @@ export async function createManager({ companyId, login, password, name, phone, e
     String(status || "active").trim() || "active",
     hashPassword(nextPassword),
     false,
+    Boolean(canRecordClientPayments),
   ]);
 
   return getManagerByCode(result.rows[0]?.code);
@@ -95,7 +97,7 @@ export async function getManagerByCode(managerCode) {
   return mapManagerRow(row);
 }
 
-export async function updateManager(managerCode, { companyId, login, password, name, phone, email, status }) {
+export async function updateManager(managerCode, { companyId, login, password, name, phone, email, status, canRecordClientPayments }) {
   const nextLogin = normalizeLogin(login);
   if (!nextLogin) {
     const error = new Error("login is required");
@@ -115,6 +117,7 @@ export async function updateManager(managerCode, { companyId, login, password, n
     String(email || "").trim() || null,
     String(status || "active").trim() || "active",
     nextPasswordHash,
+    Boolean(canRecordClientPayments),
   ]);
 
   if (!result.rows[0]?.code) {

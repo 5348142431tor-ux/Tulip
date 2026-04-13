@@ -6,6 +6,7 @@ import { companyRoutes } from "./routes/companies.js";
 import { companyAuthRoutes } from "./routes/companyAuth.js";
 import { adminAuthRoutes } from "./routes/adminAuth.js";
 import { managerRoutes } from "./routes/managers.js";
+import { requestRoutes } from "./routes/requests.js";
 import { getConfig } from "./config.js";
 import { query, closePool } from "./db.js";
 
@@ -28,6 +29,7 @@ app.get("/health", async () => {
 
 await app.register(adminAuthRoutes);
 await app.register(managerRoutes);
+await app.register(requestRoutes);
 await app.register(propertyRoutes);
 await app.register(clientAuthRoutes);
 await app.register(companyRoutes);

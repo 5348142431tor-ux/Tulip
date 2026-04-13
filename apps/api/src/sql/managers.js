@@ -9,6 +9,7 @@ export const LIST_MANAGERS_SQL = `
     s.email,
     s.status,
     s.must_change_password,
+    s.can_record_client_payments,
     s.management_company_id,
     mc.code AS management_company_code,
     mc.name AS management_company_name,
@@ -41,9 +42,10 @@ export const INSERT_MANAGER_SQL = `
     email,
     status,
     password_hash,
-    must_change_password
+    must_change_password,
+    can_record_client_payments
   )
-  VALUES ($1, $2, $3, $4, 'manager', $5, $6, $7, $8, $9)
+  VALUES ($1, $2, $3, $4, 'manager', $5, $6, $7, $8, $9, $10)
   RETURNING
     id,
     code,
@@ -54,6 +56,7 @@ export const INSERT_MANAGER_SQL = `
     email,
     status,
     must_change_password,
+    can_record_client_payments,
     management_company_id;
 `;
 
@@ -66,6 +69,7 @@ export const UPDATE_MANAGER_SQL = `
     email = $6,
     status = $7,
     password_hash = COALESCE($8, password_hash),
+    can_record_client_payments = $9,
     updated_at = NOW()
   WHERE code = $1
     AND role = 'manager'
@@ -80,6 +84,7 @@ export const UPDATE_MANAGER_SQL = `
     email,
     status,
     must_change_password,
+    can_record_client_payments,
     management_company_id;
 `;
 
@@ -102,6 +107,7 @@ export const FIND_MANAGER_BY_CODE_SQL = `
     s.email,
     s.status,
     s.must_change_password,
+    s.can_record_client_payments,
     s.management_company_id,
     mc.code AS management_company_code,
     mc.name AS management_company_name,

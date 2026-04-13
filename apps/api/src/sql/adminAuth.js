@@ -7,6 +7,7 @@ export const FIND_STAFF_AUTH_BY_LOGIN_SQL = `
     s.role,
     s.password_hash,
     s.must_change_password,
+    s.can_record_client_payments,
     s.status,
     s.email,
     mc.id AS management_company_id,
@@ -29,6 +30,7 @@ export const FIND_STAFF_BY_CODE_SQL = `
     s.full_name,
     s.role,
     s.must_change_password,
+    s.can_record_client_payments,
     s.status,
     mc.id AS management_company_id,
     mc.code AS management_company_code,
@@ -53,6 +55,12 @@ export const FIND_CLIENT_BY_CODE_SQL = `
   FROM clients c
   INNER JOIN management_companies mc ON mc.id = c.management_company_id
   WHERE c.code = $1
+    AND EXISTS (
+      SELECT 1
+      FROM ownerships o
+      INNER JOIN units u ON u.id = o.unit_id
+      WHERE o.client_id = c.id
+    )
   LIMIT 1;
 `;
 
@@ -64,6 +72,7 @@ export const LIST_STAFF_IMPERSONATION_TARGETS_SQL = `
     s.full_name,
     s.role,
     s.must_change_password,
+    s.can_record_client_payments,
     s.status,
     mc.id AS management_company_id,
     mc.code AS management_company_code,
@@ -86,5 +95,35 @@ export const LIST_CLIENT_IMPERSONATION_TARGETS_SQL = `
     mc.status AS management_company_status
   FROM clients c
   INNER JOIN management_companies mc ON mc.id = c.management_company_id
+  WHERE EXISTS (
+    SELECT 1
+    FROM ownerships o
+    INNER JOIN units u ON u.id = o.unit_id
+    WHERE o.client_id = c.id
+  )
   ORDER BY c.full_name ASC, c.code ASC;
+`;
+
+
+export const FIND_COMPANY_IMPERSONATION_TARGET_SQL = `
+  SELECT
+    mc.id,
+    mc.code,
+    mc.name,
+    mc.director_name,
+    mc.status
+  FROM management_companies mc
+  WHERE mc.code = $1
+  LIMIT 1;
+`;
+
+export const LIST_COMPANY_IMPERSONATION_TARGETS_SQL = `
+  SELECT
+    mc.id,
+    mc.code,
+    mc.name,
+    mc.director_name,
+    mc.status
+  FROM management_companies mc
+  ORDER BY mc.created_at DESC, mc.code ASC;
 `;

@@ -40,6 +40,7 @@ function normalizeActor(actor) {
     actorType: String(actor.actorType || inferActorType(actor.role)).trim(),
     login: actor.login ? String(actor.login).trim() : undefined,
     mustChangePassword: Boolean(actor.mustChangePassword),
+    canRecordClientPayments: Boolean(actor.canRecordClientPayments),
     clientId: actor.clientId ? String(actor.clientId).trim() : undefined,
     staffId: actor.staffId ? String(actor.staffId).trim() : undefined,
     company: actor.company
@@ -69,6 +70,7 @@ function inflateActor(actor) {
     actorType: normalizedActor.actorType,
     ...(normalizedActor.login ? { login: normalizedActor.login } : {}),
     mustChangePassword: Boolean(normalizedActor.mustChangePassword),
+    canRecordClientPayments: Boolean(normalizedActor.canRecordClientPayments),
     ...(normalizedActor.clientId ? { clientId: normalizedActor.clientId } : {}),
     ...(normalizedActor.staffId ? { staffId: normalizedActor.staffId } : {}),
     ...(normalizedActor.company?.id

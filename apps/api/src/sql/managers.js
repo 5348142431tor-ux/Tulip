@@ -120,3 +120,25 @@ export const FIND_MANAGER_BY_CODE_SQL = `
   GROUP BY s.id, mc.code, mc.name
   LIMIT 1;
 `;
+
+export const UPDATE_COMPANY_ADMIN_PROFILE_SQL = `
+  UPDATE staff
+  SET
+    full_name = $3,
+    updated_at = NOW()
+  WHERE code = $1
+    AND role = 'company_admin'
+    AND management_company_id = $2
+  RETURNING
+    id,
+    code,
+    login,
+    full_name,
+    role,
+    phone,
+    email,
+    status,
+    must_change_password,
+    can_record_client_payments,
+    management_company_id;
+`;

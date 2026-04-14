@@ -3,8 +3,10 @@ import { query } from "../db.js";
 import {
   DELETE_COMPANY_SQL,
   FIND_COMPANY_BY_CODE_SQL,
+  FIND_COMPANY_PROFILE_BY_CODE_SQL,
   INSERT_COMPANY_SQL,
   LIST_COMPANIES_SQL,
+  UPDATE_COMPANY_PROFILE_SQL,
   UPDATE_COMPANY_SQL,
 } from "../sql/companies.js";
 
@@ -95,4 +97,36 @@ export async function deleteCompany(companyId) {
   return {
     companyId: result.rows[0].code,
   };
+}
+
+
+export async function getCompanyProfileByCode(companyId) {
+  const nextCompanyId = String(companyId || "").trim().toUpperCase();
+  const result = await query(FIND_COMPANY_PROFILE_BY_CODE_SQL, [nextCompanyId]);
+
+  if (!result.rows[0]) {
+    const error = new Error("Company not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return mapCompanyRow(result.rows[0]);
+}
+
+export async function updateCompanyProfile(companyId, payload) {
+  const nextCompanyId = String(companyId || "").trim().toUpperCase();
+  const title = String(payload.title || "").trim() || `Компания ${nextCompanyId}`;
+  const result = await query(UPDATE_COMPANY_PROFILE_SQL, [
+    nextCompanyId,
+    title,
+    payload.directorName ? String(payload.directorName).trim() : null,
+  ]);
+
+  if (!result.rows[0]) {
+    const error = new Error("Company not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return mapCompanyRow(result.rows[0]);
 }

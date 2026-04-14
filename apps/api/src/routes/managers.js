@@ -2,6 +2,7 @@ import {
   createManager,
   deleteManager,
   listManagers,
+  updateCompanyAdminProfile,
   updateManager,
 } from "../repositories/managerRepository.js";
 import { assertViewAccess, getRequestAccess } from "../auth/requestAccess.js";
@@ -32,6 +33,27 @@ function resolveCompanyId(access, explicitCompanyId = "") {
 }
 
 export async function managerRoutes(fastify) {
+  fastify.put("/api/company-admin/profile", async (request, reply) => {
+    const access = assertManagerManageAccess(request);
+    const body = request.body || {};
+
+    if (access.role !== "company_admin") {
+      reply.code(403);
+      return { message: "Only company admin can update this profile" };
+    }
+
+    if (!body.name) {
+      reply.code(400);
+      return { message: "name is required" };
+    }
+
+    return {
+      item: await updateCompanyAdminProfile(access.userId, resolveCompanyId(access), {
+        name: body.name,
+      }),
+    };
+  });
+
   fastify.get("/api/managers", async (request) => {
     const access = assertViewAccess(request, "managers");
     return {

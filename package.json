@@ -14,6 +14,10 @@
     "bot:dev": "npm run dev --workspace @tulip/bot",
     "bot:start": "npm run start --workspace @tulip/bot",
     "build": "echo \"Define build scripts after implementation\"",
-    "test": "echo \"Tests will be added with implementation\""
+    "test": "npm run smoke",
+    "smoke:admin-core": "node scripts/smoke/admin-core.mjs",
+    "smoke:unit-profile-flow": "node scripts/smoke/unit-profile-flow.mjs",
+    "smoke": "npm run smoke:admin-core && npm run smoke:unit-profile-flow && npm run smoke:request-status-flow",
+    "smoke:request-status-flow": "node scripts/smoke/request-status-flow.mjs"
   }
 }

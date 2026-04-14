@@ -63,6 +63,16 @@ export function assertCompanyManageAccess(request) {
   return access;
 }
 
+export function assertCurrentCompanyProfileAccess(request) {
+  const access = getRequestAccess(request);
+
+  if (access.role !== "company_admin" || !access.company?.code) {
+    throw forbidden(`${getRoleLabel(access.role)} cannot manage current company profile`);
+  }
+
+  return access;
+}
+
 export function assertPropertyListAccess(request) {
   return assertViewAccess(request, "properties");
 }

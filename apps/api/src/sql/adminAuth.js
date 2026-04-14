@@ -104,26 +104,3 @@ export const LIST_CLIENT_IMPERSONATION_TARGETS_SQL = `
   ORDER BY c.full_name ASC, c.code ASC;
 `;
 
-
-export const FIND_COMPANY_IMPERSONATION_TARGET_SQL = `
-  SELECT
-    mc.id,
-    mc.code,
-    mc.name,
-    mc.director_name,
-    mc.status
-  FROM management_companies mc
-  WHERE mc.code = $1
-  LIMIT 1;
-`;
-
-export const LIST_COMPANY_IMPERSONATION_TARGETS_SQL = `
-  SELECT
-    mc.id,
-    mc.code,
-    mc.name,
-    mc.director_name,
-    mc.status
-  FROM management_companies mc
-  ORDER BY mc.created_at DESC, mc.code ASC;
-`;

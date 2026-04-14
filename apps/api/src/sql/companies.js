@@ -74,3 +74,41 @@ export const DELETE_COMPANY_SQL = `
   WHERE code = $1
   RETURNING id, code;
 `;
+
+
+export const FIND_COMPANY_PROFILE_BY_CODE_SQL = `
+  SELECT
+    id,
+    code,
+    name,
+    director_name,
+    status,
+    telegram_id,
+    telegram_username,
+    temp_password,
+    must_change_password,
+    created_at
+  FROM management_companies
+  WHERE code = $1
+  LIMIT 1;
+`;
+
+export const UPDATE_COMPANY_PROFILE_SQL = `
+  UPDATE management_companies
+  SET
+    name = $2,
+    director_name = $3,
+    updated_at = NOW()
+  WHERE code = $1
+  RETURNING
+    id,
+    code,
+    name,
+    director_name,
+    status,
+    telegram_id,
+    telegram_username,
+    temp_password,
+    must_change_password,
+    created_at;
+`;

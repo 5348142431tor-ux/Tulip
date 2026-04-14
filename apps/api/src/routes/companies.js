@@ -1,15 +1,43 @@
 import {
   createCompany,
   deleteCompany,
+  getCompanyProfileByCode,
   listCompanies,
   updateCompany,
+  updateCompanyProfile,
 } from "../repositories/companyRepository.js";
 import {
   assertCompanyManageAccess,
   assertCompanyReadAccess,
+  assertCurrentCompanyProfileAccess,
 } from "../auth/requestAccess.js";
 
 export async function companyRoutes(fastify) {
+  fastify.get("/api/company-profile", async (request) => {
+    const access = assertCurrentCompanyProfileAccess(request);
+
+    return {
+      item: await getCompanyProfileByCode(access.company.code),
+    };
+  });
+
+  fastify.put("/api/company-profile", async (request, reply) => {
+    const access = assertCurrentCompanyProfileAccess(request);
+    const body = request.body || {};
+
+    if (!body.title) {
+      reply.code(400);
+      return { message: "title is required" };
+    }
+
+    return {
+      item: await updateCompanyProfile(access.company.code, {
+        title: body.title,
+        directorName: body.directorName,
+      }),
+    };
+  });
+
   fastify.get("/api/companies", async (request) => {
     assertCompanyReadAccess(request);
 

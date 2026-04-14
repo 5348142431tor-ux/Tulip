@@ -6,6 +6,7 @@ import {
   INSERT_MANAGER_SQL,
   LIST_MANAGERS_SQL,
   NEXT_MANAGER_CODE_SQL,
+  UPDATE_COMPANY_ADMIN_PROFILE_SQL,
   UPDATE_MANAGER_SQL,
 } from "../sql/managers.js";
 
@@ -142,4 +143,32 @@ export async function deleteManager(managerCode, companyId) {
   }
 
   return { managerId: result.rows[0].code };
+}
+
+
+export async function updateCompanyAdminProfile(adminCode, companyId, { name }) {
+  const result = await query(UPDATE_COMPANY_ADMIN_PROFILE_SQL, [
+    String(adminCode || "").trim(),
+    String(companyId || "").trim(),
+    String(name || "").trim(),
+  ]);
+
+  if (!result.rows[0]?.code) {
+    const error = new Error("Company admin not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    id: result.rows[0].code,
+    login: result.rows[0].login || result.rows[0].code,
+    name: result.rows[0].full_name,
+    role: result.rows[0].role || "company_admin",
+    phone: result.rows[0].phone || "",
+    email: result.rows[0].email || "",
+    status: result.rows[0].status || "active",
+    mustChangePassword: Boolean(result.rows[0].must_change_password),
+    canRecordClientPayments: Boolean(result.rows[0].can_record_client_payments),
+    companyId: String(companyId || ""),
+  };
 }

@@ -11,6 +11,10 @@ import {
   renderClientsListView,
 } from "./src/clients.js";
 import {
+  renderClientDashboardView,
+  renderStaffDashboardView,
+} from "./src/dashboard.js";
+import {
   renderRequestDetailView,
   renderRequestsListView,
   renderRequestStatusControlView,
@@ -20,6 +24,7 @@ import {
   renderPropertyDetailView,
   renderUnitDetailView,
 } from "./src/properties.js";
+import { renderManagersView } from "./src/managers.js";
 import {
   canAccessView as canRoleAccessView,
   canAddProperties as canRoleAddProperties,
@@ -39,6 +44,15 @@ const API_BASE_URL = resolveApiBaseUrl();
 function getUserLabel(user) {
   if (!user) return "Гость";
   return user.label || getRoleLabel(user.role);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 const DEFAULT_DATA_STORE = {
@@ -714,6 +728,9 @@ let editingCompanyId = null;
 let editingManagerId = null;
 let editingUnitProfileId = null;
 let managerFormFeedback = "";
+let companyProfileFeedback = "";
+let companyAdminProfileFeedback = "";
+let currentCompanyProfile = null;
 let clientDirectorySort = {
   key: "",
   direction: "asc",
@@ -878,6 +895,8 @@ function applyAdminSession(session) {
   adminSessionToken = session?.token || "";
   currentUser = session?.user || null;
   currentImpersonator = session?.impersonator || null;
+  currentCompanyProfile = null;
+  companyProfileFeedback = "";
   resetGlobalSearch();
   persistAuthState(session);
 }
@@ -965,6 +984,66 @@ async function updateCompanyViaApi(companyId, companyInput) {
   }
   setApiStatus("connected");
   return upsertCompany(payload.item);
+}
+
+async function fetchCurrentCompanyProfileViaApi() {
+  const payload = await fetchJson("/api/company-profile");
+  if (!payload.item) {
+    throw new Error("Company profile was not returned by API");
+  }
+  setApiStatus("connected");
+  currentCompanyProfile = normalizeCompanyRecord(payload.item);
+  upsertCompany(currentCompanyProfile);
+  return currentCompanyProfile;
+}
+
+async function updateCurrentCompanyProfileViaApi(companyInput) {
+  const payload = await fetchJson("/api/company-profile", {
+    method: "PUT",
+    body: JSON.stringify(companyInput),
+  });
+  if (!payload.item) {
+    throw new Error("Company profile was not returned by API");
+  }
+  setApiStatus("connected");
+  currentCompanyProfile = upsertCompany(payload.item);
+  if (currentUser?.company) {
+    currentUser.company = {
+      ...currentUser.company,
+      code: currentCompanyProfile.companyId,
+      name: currentCompanyProfile.title,
+    };
+    persistAuthState({
+      token: adminSessionToken,
+      user: currentUser,
+      impersonator: currentImpersonator,
+    });
+  }
+  return currentCompanyProfile;
+}
+
+async function updateCompanyAdminProfileViaApi(profileInput) {
+  const payload = await fetchJson("/api/company-admin/profile", {
+    method: "PUT",
+    body: JSON.stringify(profileInput),
+  });
+  if (!payload.item) {
+    throw new Error("Company admin profile was not returned by API");
+  }
+  setApiStatus("connected");
+  if (currentUser) {
+    currentUser = {
+      ...currentUser,
+      name: payload.item.name || currentUser.name,
+      login: payload.item.login || currentUser.login,
+    };
+    persistAuthState({
+      token: adminSessionToken,
+      user: currentUser,
+      impersonator: currentImpersonator,
+    });
+  }
+  return payload.item;
 }
 
 async function deleteCompanyViaApi(companyId) {
@@ -1703,33 +1782,29 @@ function renderDashboard() {
   if (isClientRole()) {
     const clientPrimaryUnit = getClientPrimaryUnit();
     const scopedRequests = getScopedRequests();
-    const scopedDocuments = getScopedDocuments();
     const clientRecord = getCurrentClientRecord();
+    const view = renderClientDashboardView({
+      clientPrimaryUnit,
+      clientRecordName: clientRecord?.name || currentUser?.name || 'Клиент',
+      clientPhone: clientRecord?.phone || '',
+      clientOwnerSummary: clientPrimaryUnit ? unitOwnerSummary(clientPrimaryUnit.unit) : '',
+      scopedRequests,
+      getRequestPreviewText,
+      getRequestStatusLabel,
+      formatDateTime,
+      propertyAidatSummary: clientPrimaryUnit
+        ? formatBalancesSummary(getPropertyAidatBalances(clientPrimaryUnit.property))
+        : 'Закрыто',
+      unitAidatSummary: clientPrimaryUnit
+        ? formatBalancesSummary(getUnitAidatBalances(clientPrimaryUnit.unit))
+        : 'Закрыто',
+    });
 
-    focusCard.innerHTML = clientPrimaryUnit
-      ? `<p class="eyebrow">Мое помещение</p><h3>${clientPrimaryUnit.property.title}, квартира ${clientPrimaryUnit.unit.number}</h3><p>${clientRecord?.name || currentUser?.name || 'Клиент'} видит только свои данные.</p>`
-      : `<p class="eyebrow">Мое помещение</p><h3>Квартира пока не привязана</h3><p>Для этого клиента пока нет активной квартиры.</p>`;
-
-    requestStatusGrid.innerHTML = clientPrimaryUnit
-      ? [
-          { label: 'Дом: айдат', value: formatBalancesSummary(getPropertyAidatBalances(clientPrimaryUnit.property)) },
-          { label: 'Мой айдат', value: formatBalancesSummary(getUnitAidatBalances(clientPrimaryUnit.unit)) },
-          { label: 'Коммунальные', value: 'В разработке' },
-          { label: 'Мои заявки', value: scopedRequests.filter((request) => request.status !== 'done').length },
-        ].map((item, index) => `<article class="metric-tile" data-ui-id="metric-client-${index + 1}"><span>${item.label}</span><strong>${item.value}</strong></article>`).join('')
-      : '<div class="empty-state">Нет привязанной квартиры.</div>';
-
-    priorityRequests.innerHTML = scopedRequests.length
-      ? scopedRequests.map((request) => `<article class="ticket-card" data-ui-id="card-client-request-${request.code}"><strong>Заявка №${request.requestNumber || '—'}</strong><p>${getRequestPreviewText(request)}</p><div class="entity-meta"><span>${getRequestStatusLabel(request.status)}</span><span>${formatDateTime(request.createdAt)}</span></div></article>`).join('')
-      : '<div class="empty-state">По вашей квартире заявок пока нет.</div>';
-
-    paymentHealth.innerHTML = clientPrimaryUnit
-      ? `<div class="stack-item"><span>Айдат</span><strong>${formatBalancesSummary(getUnitAidatBalances(clientPrimaryUnit.unit))}</strong></div>`
-      : '<div class="empty-state">Нет данных по платежам.</div>';
-
-    staffLoad.innerHTML = clientPrimaryUnit
-      ? `<div class="load-row"><div><strong>${unitOwnerSummary(clientPrimaryUnit.unit)}</strong><p>Собственник</p></div><div><p>${clientRecord?.phone || 'Телефон не указан'}</p></div></div>`
-      : '<div class="empty-state">Нет данных по собственнику.</div>';
+    focusCard.innerHTML = view.focusCard;
+    requestStatusGrid.innerHTML = view.requestStatusGrid;
+    priorityRequests.innerHTML = view.priorityRequests;
+    paymentHealth.innerHTML = view.paymentHealth;
+    staffLoad.innerHTML = view.staffLoad;
     return;
   }
 
@@ -1743,15 +1818,40 @@ function renderDashboard() {
     cancelled: scopedRequests.filter((request) => request.status === 'cancelled').length,
   };
 
-  focusCard.innerHTML = `<p class="eyebrow">Главное</p><h3>${visibleProperties.length} домов в контуре текущего кабинета.</h3><p>Экран уже берет данные из БД по текущей роли.</p>`;
-  requestStatusGrid.innerHTML = Object.entries(requestBuckets).map(([status, count]) => `<article class="metric-tile"><span>${getRequestStatusLabel(status)}</span><strong>${count}</strong></article>`).join('');
-  priorityRequests.innerHTML = scopedRequests.length
-    ? scopedRequests.slice(0, 5).map((request) => `<article class="ticket-card"><strong>Заявка №${request.requestNumber || '—'}</strong><p>${request.property || 'Комплекс не указан'} • ${getRequestResidentLabel(request)}</p><div class="entity-meta"><span>${getRequestStatusLabel(request.status)}</span><span>${request.assignee || 'Не назначен'}</span></div></article>`).join('')
-    : '<div class="empty-state">Заявок пока нет.</div>';
-  paymentHealth.innerHTML = buildIncomingPaymentRows().slice(0, 5).map((payment) => `<div class="stack-item"><span>${payment.propertyTitle} • кв. ${payment.unitNumber}</span><strong>${formatMoney(payment.amount, payment.currency)}</strong></div>`).join('') || '<div class="empty-state">Платежей пока нет.</div>';
-  staffLoad.innerHTML = visibleManagers.length
-    ? visibleManagers.map((member) => `<div class="load-row"><div><strong>${member.name}</strong><p>${getRoleLabel(member.role)}</p></div><div><p>${member.openRequests || 0} открытых</p></div></div>`).join('')
-    : '<div class="empty-state">Менеджеров пока нет.</div>';
+  const paymentItems = buildIncomingPaymentRows().slice(0, 5).map((payment) => ({
+    propertyTitle: payment.propertyTitle,
+    unitNumber: payment.unitNumber,
+    amountText: formatMoney(payment.amount, payment.currency),
+  }));
+
+  const view = renderStaffDashboardView({
+    role: currentUser?.role,
+    visiblePropertiesCount: visibleProperties.length,
+    requestBuckets,
+    requestItems: scopedRequests,
+    paymentItems,
+    visibleManagers: visibleManagers.map((member) => ({
+      name: member.name,
+      roleLabel: getRoleLabel(member.role),
+      openRequests: member.openRequests || 0,
+    })),
+    getRequestStatusLabel,
+    getRequestResidentLabel,
+    companyProfile: currentCompanyProfile || normalizeCompanyRecord({
+      companyId: currentUser?.company?.code || '',
+      title: currentUser?.company?.name || '',
+      directorName: '',
+      status: 'active',
+    }),
+    companyProfileFeedback,
+    currentCompanyName: currentUser?.company?.name || '',
+  });
+
+  focusCard.innerHTML = view.focusCard;
+  requestStatusGrid.innerHTML = view.requestStatusGrid;
+  priorityRequests.innerHTML = view.priorityRequests;
+  paymentHealth.innerHTML = view.paymentHealth;
+  staffLoad.innerHTML = view.staffLoad;
 }
 
 function getScopedPayments() {
@@ -2115,86 +2215,14 @@ function renderManagers() {
     );
   const canManageManagers = ["project_owner", "company_admin"].includes(currentUser?.role);
 
-  const managerForm = canManageManagers
-    ? `
-      <article class="card manager-panel-card" data-ui-id="card-manager-create">
-        <div class="card-head">
-          <h4>${editingManagerId ? "Редактировать менеджера" : "Добавить менеджера"}</h4>
-          <span>${editingManagerId ? editingManagerId : "Новый сотрудник"}</span>
-        </div>
-        <form id="manager-form" class="form-grid" data-manager-form>
-          <label class="field">
-            <span>ФИО менеджера</span>
-            <input name="name" type="text" placeholder="Введите имя" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.name || "") : ""}" required />
-          </label>
-          <label class="field">
-            <span>Логин</span>
-            <input name="login" type="text" placeholder="manager.login" value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.login || "") : ""}" required />
-          </label>
-          <label class="field">
-            <span>Пароль</span>
-            <input name="password" type="text" placeholder="${editingManagerId ? "Оставьте пустым, чтобы не менять" : "Введите пароль"}" ${editingManagerId ? "" : "required"} />
-          </label>
-          <label class="field">
-            <span>Телефон</span>
-            <input name="phone" type="text" placeholder="+90 555 ..." value="${editingManagerId ? (managers.find((item) => item.id === editingManagerId)?.phone || "") : ""}" />
-          </label>
-          <label class="field field-full manager-permission-field">
-            <span>Право на оплаты</span>
-            <label class="manager-permission-toggle">
-              <input name="canRecordClientPayments" type="checkbox" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.canRecordClientPayments) ? "checked" : "") : ""} />
-              <strong>Может вносить оплаты клиентов</strong>
-            </label>
-          </label>
-          <label class="field">
-            <span>Статус</span>
-            <select name="status">
-              <option value="active" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "active" ? "selected" : "") : "selected"}>Активен</option>
-              <option value="inactive" ${editingManagerId ? ((managers.find((item) => item.id === editingManagerId)?.status || "active") === "inactive" ? "selected" : "") : ""}>Неактивен</option>
-            </select>
-          </label>
-          <div class="modal-actions field-full manager-form-actions">
-            <div id="manager-form-message" class="form-message">${managerFormFeedback}</div>
-            ${editingManagerId ? '<button type="button" class="ghost-button" data-cancel-manager-edit>Отмена</button>' : ''}
-            <button type="submit" class="primary-button">${editingManagerId ? "Сохранить" : "Добавить"}</button>
-          </div>
-        </form>
-      </article>
-    `
-    : "";
-
-  const managerCards = managers.length
-    ? managers
-        .map(
-          (member) => `
-            <article class="entity-card" data-ui-id="card-manager-${member.id}">
-              <p class="eyebrow">${member.id}</p>
-              <strong>${member.name}</strong>
-              <p>Менеджер компании${member.phone ? ` • ${member.phone}` : ""}</p>
-              <div class="entity-meta">
-                <span>Логин: ${member.login || member.id}</span>
-                <span>Пароль: скрыт</span>
-              </div>
-              <div class="entity-meta">
-                <span>${member.status === "active" ? "Активен" : "Неактивен"}</span>
-                <span>${member.openRequests} открытых заявок</span>
-              </div>
-              <div class="entity-meta">
-                <span>${member.canRecordClientPayments ? "Может вносить оплаты" : "Не вносит оплаты"}</span>
-              </div>
-              ${canManageManagers ? `
-                <div class="company-card-actions manager-card-actions">
-                  <button type="button" class="ghost-button" data-edit-manager="${member.id}">Редактировать</button>
-                  <button type="button" class="ghost-button" data-delete-manager="${member.id}">Удалить</button>
-                </div>
-              ` : ""}
-            </article>
-          `
-        )
-        .join("")
-    : '<div class="empty-state">Менеджеры этой компании пока не добавлены.</div>';
-
-  managersGrid.innerHTML = `${managerForm}${managerCards}`;
+  managersGrid.innerHTML = renderManagersView({
+    managers,
+    canManageManagers,
+    currentUser,
+    editingManagerId,
+    managerFormFeedback,
+    companyAdminProfileFeedback,
+  });
 }
 
 function renderClients() {
@@ -3503,6 +3531,63 @@ document.addEventListener("submit", (event) => {
     return;
   }
 
+  const companyProfileForm = event.target.closest("[data-company-profile-form]");
+  if (companyProfileForm) {
+    event.preventDefault();
+
+    const formData = new FormData(companyProfileForm);
+    const title = String(formData.get("title") || "").trim();
+    const directorName = String(formData.get("directorName") || "").trim();
+
+    if (!title) {
+      companyProfileFeedback = "Введите название компании.";
+      renderDashboard();
+      return;
+    }
+
+    updateCurrentCompanyProfileViaApi({ title, directorName })
+      .then(() => {
+        companyProfileFeedback = "Профиль компании обновлен в БД.";
+        renderNav();
+        renderAuthUi();
+        renderDashboard();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        companyProfileFeedback = error.message || "Не удалось обновить профиль компании.";
+        renderDashboard();
+      });
+    return;
+  }
+
+  const companyAdminProfileForm = event.target.closest("[data-company-admin-profile-form]");
+  if (companyAdminProfileForm) {
+    event.preventDefault();
+
+    const formData = new FormData(companyAdminProfileForm);
+    const name = String(formData.get("name") || "").trim();
+
+    if (!name) {
+      companyAdminProfileFeedback = "Введите ФИО руководителя.";
+      renderManagers();
+      return;
+    }
+
+    updateCompanyAdminProfileViaApi({ name })
+      .then(() => {
+        companyAdminProfileFeedback = "Профиль руководителя обновлен в БД.";
+        renderNav();
+        renderAuthUi();
+        renderManagers();
+      })
+      .catch((error) => {
+        setApiStatus("offline");
+        companyAdminProfileFeedback = error.message || "Не удалось обновить профиль руководителя.";
+        renderManagers();
+      });
+    return;
+  }
+
   const managerForm = event.target.closest("[data-manager-form]");
   if (managerForm) {
     event.preventDefault();
@@ -3722,8 +3807,13 @@ authForm.addEventListener("submit", async (event) => {
     await syncPropertiesFromApi();
     await syncRequestsFromApi();
 
-    if (currentUser.role !== "client") {
+    if (currentUser.role === "project_owner") {
       await syncCompaniesFromApi();
+      await syncManagersFromApi();
+    } else if (currentUser.role === "company_admin") {
+      await fetchCurrentCompanyProfileViaApi();
+      await syncManagersFromApi();
+    } else if (currentUser.role !== "client") {
       await syncManagersFromApi();
     }
     closeAuthModal();
@@ -4281,6 +4371,8 @@ propertiesBreadcrumbs.addEventListener("click", (event) => {
 });
 
 async function bootstrapAdminCabinet() {
+  resetGlobalSearch();
+
   if (adminSessionToken) {
     try {
       const session = await validateAdminSessionViaApi();
@@ -4294,8 +4386,13 @@ async function bootstrapAdminCabinet() {
     await syncPropertiesFromApi();
     await syncRequestsFromApi();
 
-    if (currentUser.role !== "client") {
+    if (currentUser.role === "project_owner") {
       await syncCompaniesFromApi();
+      await syncManagersFromApi();
+    } else if (currentUser.role === "company_admin") {
+      await fetchCurrentCompanyProfileViaApi();
+      await syncManagersFromApi();
+    } else if (currentUser.role !== "client") {
       await syncManagersFromApi();
     }
   } else {
